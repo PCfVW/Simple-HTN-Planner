@@ -185,7 +185,8 @@ typedef std::map<MethodId, Ptr2Method> SubTasks;
 
 // Declare HTNs
 typedef std::map<TaskId, std::vector<TaskId>> Methods;
-Methods travel_methods = { {TaskId("travel"), {MethodId("travel_by_foot"), MethodId("travel_by_taxi")}} };
+// Methods travel_methods = { {TaskId("travel"), {MethodId("travel_by_foot"), MethodId("travel_by_taxi")}} };
+Methods travel_methods = { {TaskId("travel"), {}} };
 
 // Print out a table of what the methods are for each task
 void print_methods(Methods mlist)
@@ -325,7 +326,7 @@ bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods,
 }
 
 // Try to find a plan that accomplishes tasks in state.
-// If successful, return the plan.Otherwise return False.
+// If successful, return the plan. Otherwise return False.
 bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, unsigned short verbose = 0)
 {
 	if (verbose > 0)
@@ -336,16 +337,21 @@ bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, SubT
 	bTasks result = seek_plan(state, tasks, operators, methods, subtasks, {}, 0, verbose);
 	if (verbose > 0)
 	{
-		std::cout << "** result = [";
-		for (Tasks::iterator it_t = result.second.begin(); it_t != result.second.end(); )
+		if (ReturnedValue::True == result.first)
 		{
-			std::cout << "(" << it_t->first;
-			it_t->second.print();
-			std::cout << ")";
-			if (++it_t != result.second.end())
-				std::cout << ", ";
+			std::cout << "** result = [";
+			for (Tasks::iterator it_t = result.second.begin(); it_t != result.second.end(); )
+			{
+				std::cout << "(" << it_t->first;
+				it_t->second.print();
+				std::cout << ")";
+				if (++it_t != result.second.end())
+					std::cout << ", ";
+			}
+			std::cout << "]" << std::endl;
 		}
-		std::cout << "]" << std::endl;
+		else
+			std::cout << "** result = " << std::string(GetStringReturnedValue(result.first)) << std::endl;
 	}
 	return result;
 }
