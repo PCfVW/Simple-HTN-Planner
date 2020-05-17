@@ -1,14 +1,13 @@
 
 #include <iomanip>			// Visibility for std::setw, std::left, std::right
 #include <iostream>			// Visibility for stc::cout, std::endl
-#include <map>				// Visibility for std::map<,>
-#include <queue>			// Visiviliby for std::queue
+#include <map>				// Visibility for std::map
 #include <string>			// Visibility for std::string
-#include <vector>			// Visibility for std::vector<>
+#include <vector>			// Visibility for std::vector
 
 #include "EnumAgent.h"			// Application Domain: Travel
 #include "EnumLocation.h"		// Application Domain: Travel
-#include "EnumReturnedValue.h"	// Visibility for None, False, and True.
+#include "EnumReturnedValue.h"	// Visibility for None, False, and True
 
 typedef std::string MethodId;
 typedef std::string OperatorId;
@@ -131,9 +130,7 @@ typedef std::pair<ReturnedValue, Tasks> bTasks;
 bTasks travel_by_foot(State state, Parameters p)
 {
 	if (state.dist[{p.x, p.y}] <= 2)
-	{
 		return { ReturnedValue::True, { Task(OperatorId("walk"),p) } };
-	}
 	else
 		return { ReturnedValue::False, {} };
 }
@@ -141,9 +138,7 @@ bTasks travel_by_foot(State state, Parameters p)
 bTasks travel_by_taxi(State state, Parameters p)
 {
 	if (state.cash[p.a] >= taxi_rate(state.dist[{p.x, p.y}]))
-	{
 		return { ReturnedValue::True, { Task(OperatorId("call_taxi"), p), Task(OperatorId("ride_taxi"), p), Task(OperatorId("pay_driver"), p) } };
-	}
 	else
 		return { ReturnedValue::False, {} };
 }
@@ -185,8 +180,7 @@ typedef std::map<MethodId, Ptr2Method> SubTasks;
 
 // Declare HTNs
 typedef std::map<TaskId, std::vector<TaskId>> Methods;
-// Methods travel_methods = { {TaskId("travel"), {MethodId("travel_by_foot"), MethodId("travel_by_taxi")}} };
-Methods travel_methods = { {TaskId("travel"), {}} };
+Methods travel_methods = { {TaskId("travel"), {MethodId("travel_by_foot"), MethodId("travel_by_taxi")}} };
 
 // Print out a table of what the methods are for each task
 void print_methods(Methods mlist)
@@ -312,16 +306,15 @@ bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods,
 	Task task = tasks.back();
 	const Operators::iterator it_op = operators.find(task.first);
 	if (it_op != operators.end())
-	{
 		return search_operators(state, tasks, operators, methods, subtasks, plan, task, depth, verbose);
-	}
+
 	const Methods::iterator it_me = methods.find(task.first);
 	if (it_me != methods.end())
-	{
 		return search_methods(state, tasks, operators, methods, subtasks, plan, task, depth, verbose);
-	}
+
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " returns failure." << std::endl;
+
 	return { ReturnedValue::False, {} };
 }
 
@@ -353,6 +346,7 @@ bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, SubT
 		else
 			std::cout << "** result = " << std::string(GetStringReturnedValue(result.first)) << std::endl;
 	}
+
 	return result;
 }
 
@@ -395,9 +389,9 @@ int main()
 
 	Task Initial = { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) };
 
-	std::cout << "********************************************************************************" << std::endl
+	std::cout << "*************************************************************************************" << std::endl
 			  << "Call plan(state1, [('travel', 'me', 'home', 'park')]) with different verbosity levels" << std::endl
-			  << "********************************************************************************" << std::endl;
+			  << "*************************************************************************************" << std::endl;
 
 	std::cout << "- If verbose=0 (the default), hop++ returns the solution but prints nothing." << std::endl;
 	plan(state1, { Initial }, operators, travel_methods, subtasks);
