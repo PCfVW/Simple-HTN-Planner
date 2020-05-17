@@ -6,8 +6,9 @@
 #include <string>			// Visibility for std::string
 #include <vector>			// Visibility for std::vector<>
 
-#include "EnumAgent.h"		// Application Domain: Travel
-#include "EnumLocation.h"	// Application Domain: Travel
+#include "EnumAgent.h"			// Application Domain: Travel
+#include "EnumLocation.h"		// Application Domain: Travel
+#include "EnumReturnedValue.h"	// Visibility for None, False, and True.
 
 typedef std::string MethodId;
 typedef std::string OperatorId;
@@ -18,7 +19,7 @@ class State {
 		std::string name;
 
 	public:
-		typedef std::pair<bool, State> bState;
+		typedef std::pair<ReturnedValue, State> bState;
 
 		std::map<Agent, float> cash;
 		std::map<std::pair<Location, Location>, float> dist;
@@ -83,17 +84,17 @@ State::bState walk(State state, Parameters p)
 	{
 		State result = state;
 		result.loc[p.a] = p.y;
-		return { true, result };
+		return { ReturnedValue::True, result };
 	}
 	else
-		return { true, empty };
+		return { ReturnedValue::False, empty };
 }
 
 State::bState call_taxi(State state, Parameters p)
 {
 	State result = state;
 	result.loc[Agent::taxi] = p.x;
-	return { true, result };
+	return { ReturnedValue::True, result };
 }
 
 State::bState ride_taxi(State state, Parameters p)
@@ -104,10 +105,10 @@ State::bState ride_taxi(State state, Parameters p)
 		result.loc[Agent::taxi] = p.y;
 		result.loc[p.a] = p.y;
 		result.owe[p.a] = taxi_rate(result.dist[{p.x, p.y}]);
-		return { true, result };
+		return { ReturnedValue::True, result };
 	}
 	else
-		return { true, empty };
+		return { ReturnedValue::False, empty };
 }
 
 State::bState pay_driver(State state, Parameters p)
@@ -117,40 +118,40 @@ State::bState pay_driver(State state, Parameters p)
 		State result = state;
 		result.cash[p.a] = result.cash[p.a] - result.owe[p.a];
 		result.owe[p.a] = 0;
-		return { true, result };
+		return { ReturnedValue::True, result };
 	}
 	else
-		return { true, empty };
+		return { ReturnedValue::False, empty };
 }
 
 typedef std::pair<TaskId, Parameters> Task;
 typedef std::vector<Task> Tasks;
-typedef std::pair<bool, Tasks> bTasks;
+typedef std::pair<ReturnedValue, Tasks> bTasks;
 
 bTasks travel_by_foot(State state, Parameters p)
 {
 	if (state.dist[{p.x, p.y}] <= 2)
 	{
-		return { true, { Task(OperatorId("walk"),p) } };
+		return { ReturnedValue::True, { Task(OperatorId("walk"),p) } };
 	}
 	else
-		return { false, {} };
+		return { ReturnedValue::False, {} };
 }
 
 bTasks travel_by_taxi(State state, Parameters p)
 {
 	if (state.cash[p.a] >= taxi_rate(state.dist[{p.x, p.y}]))
 	{
-		return { true, { Task(OperatorId("call_taxi"), p), Task(OperatorId("ride_taxi"), p), Task(OperatorId("pay_driver"), p) } };
+		return { ReturnedValue::True, { Task(OperatorId("call_taxi"), p), Task(OperatorId("ride_taxi"), p), Task(OperatorId("pay_driver"), p) } };
 	}
 	else
-		return { false, {} };
+		return { ReturnedValue::False, {} };
 }
 
 // Print each variable in state, indented by indent spaces.
 void print_state(State::bState state, unsigned short indent = 4)
 {
-	if (state.first)
+	if (ReturnedValue::True == state.first)
 	{
 		for (auto o : state.second.cash)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::cash::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
@@ -218,17 +219,17 @@ bTasks search_operators(State state, Tasks tasks, Operators operators, Methods m
 		std::cout << "depth = " << depth << " new state: " << std::endl;
 		print_state(newstate, 14);
 	}
-	if (newstate.first)
+	if (ReturnedValue::True == newstate.first)
 	{
 		bTasks newplan = plan;
 		tasks.pop_back();
 		newplan.second.push_back(task);
 		bTasks solution = seek_plan(newstate.second, tasks, operators, methods, subtasks, newplan, depth + 1, verbose);
-		if (false != solution.first)
+		if (ReturnedValue::False != solution.first)
 			return solution;
 	}
 
-	return { false, {} };
+	return { newstate.first, {} };
 }
 
 bTasks search_methods(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
@@ -267,20 +268,20 @@ bTasks search_methods(State state, Tasks tasks, Operators operators, Methods met
 				}
 				std::cout << "}" << std::endl;
 			}
-			if (false != SubTasks.first)
+			if (ReturnedValue::False != SubTasks.first)
 			{
 				tasks.pop_back();
 				for (Tasks::iterator i = SubTasks.second.end(); i != SubTasks.second.begin(); )
 					tasks.push_back(*(--i));
 				bTasks solution = seek_plan(state, tasks, operators, methods, subtasks, plan, depth + 1, verbose);
-				if (false != solution.first)
+				if (ReturnedValue::False != solution.first)
 					return solution;
 			}
 		}
 		else
 			std::cout << "method >>" << (*r) << "<< is unknown; it may be mispelled." << std::endl;
 	}
-	return { false, {} };
+	return { ReturnedValue::None, {} };
 }
 
 // Workhorse for pyhop.state, tasks, operators, and methods are as in the plan function.
@@ -305,7 +306,7 @@ bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods,
 		if (verbose > 2)
 			std::cout << "depth = " << depth << " returns plan = " << std::endl;
 
-		return bTasks(true, plan.second);
+		return bTasks(ReturnedValue::True, plan.second);
 	}
 	Task task = tasks.back();
 	const Operators::iterator it_op = operators.find(task.first);
@@ -320,7 +321,7 @@ bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods,
 	}
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " returns failure." << std::endl;
-	return { false, {} };
+	return { ReturnedValue::False, {} };
 }
 
 // Try to find a plan that accomplishes tasks in state.
@@ -353,8 +354,8 @@ bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, SubT
 
 int main()
 {
-	print_state({ false, empty });
-	print_state({ true, empty });
+	print_state({ ReturnedValue::False, empty });
+	print_state({ ReturnedValue::True, empty });
 
 	State state1("State1");
 	state1.loc = { {Agent::me, Location::home} };
@@ -362,8 +363,8 @@ int main()
 	state1.owe = { {Agent::me, 0.0f} };
 	state1.dist = { {{Location::home, Location::park}, 8.0f}, {{Location::park, Location::home}, 8.0f} };
 
-	print_state({ true, state1 });
-	print_state({ false, state1 });
+	print_state({ ReturnedValue::True, state1 });
+	print_state({ ReturnedValue::False, state1 });
 
 	// Declare operators
 	Operators operators;
