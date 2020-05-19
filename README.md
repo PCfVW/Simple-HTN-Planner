@@ -1,7 +1,9 @@
 # Simple-HTN-Planner
-PyHop is a simple hierarchical task network (HTN) planner written in Python; here is a trivial port of PyHop 2.0 in Visual Studio (2019) C++.
+PyHop is a simple hierarchical task network (HTN) planner written in Python by [Dana Nau](https://www.cs.umd.edu/users/nau/); here is a trivial port of PyHop 2.0 in Visual Studio (2019) C++.
 
 [PyHop 2.0 Github repo](https://github.com/oubiwann/pyhop)
+
+[Dana Nau's Slides on HTN Planning -- PyHop and the travel example are detailed](https://www.cs.umd.edu/users/nau/apa/slides/htn-planning.pdf)
 
 I did my best to keep PyHop identificators in the C++ code, so you should be able to follow the C++ code from the Python code.
 
