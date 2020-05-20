@@ -276,6 +276,7 @@ bTasks search_methods(State state, Tasks tasks, Operators operators, Methods met
 		else
 			std::cout << "method >>" << (*r) << "<< is unknown; it may be mispelled." << std::endl;
 	}
+
 	return { ReturnedValue::None, {} };
 }
 
@@ -404,5 +405,6 @@ int main()
 
 	std::cout << "- If verbose=3, hop++ also prints the intermediate states:" << std::endl;
 	plan(state1, { Initial }, operators, travel_methods, subtasks, 3);
+
 	return 0;
 }
