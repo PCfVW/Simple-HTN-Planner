@@ -5,7 +5,7 @@ PyHop is a simple hierarchical task network (HTN) planner written in Python by [
 
 [Dana Nau's Slides on HTN Planning -- PyHop and the travel example are detailed](https://www.cs.umd.edu/users/nau/apa/slides/htn-planning.pdf)
 
-I did my best to keep PyHop identificators in the C++ code, so you should be able to follow the C++ code from the Python code.
+I did my best to keep PyHop identificators in the C++ code, and to print exactly what and when PyHop does print, so you should be able to follow the C++ code from the Python code.
 
 C++ code only runs the travel example from PyHop; other examples will follow.
 
