@@ -14,4 +14,4 @@ Currently:
 
 2. Planner and (travel) example are in one file (main.cpp); further commits will split planner and examples (planning domains), and I'll try to keep the C++ code as simple as possible.
 
-My current plan (:-) is to fork this project to produce a version able to run PyHop's blocks-world examples.
+I've branched this project to produce a version able to run PyHop's blocks-world examples.
