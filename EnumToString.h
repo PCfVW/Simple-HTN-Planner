@@ -1,8 +1,8 @@
 // ================================================================================================ File name: "EnumToString.h"
 // Adapted from https://www.codeproject.com/Articles/10500/Converting-C-enums-to-strings
-//    - Added class line 10
-//    - Added const line 13, 16 and 17.
-//    - Removed enum line 14
+//    - Added class line 13
+//    - Added const line 15, 18 and 19.
+//    - Removed enum line 15
 #pragma once
 #undef DECL_ENUM_ELEMENT
 #undef BEGIN_ENUM
