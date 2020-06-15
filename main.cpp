@@ -7,6 +7,7 @@
 #include <vector>			// Visibility for std::vector
 
 #include "EnumAgent.h"			// Application Domain: Travel
+#include "EnumBlock.h"			// Application Domain: Blocksworld
 #include "EnumLocation.h"		// Application Domain: Travel
 #include "EnumReturnedValue.h"	// Visibility for None, False, and True
 
@@ -21,40 +22,75 @@ class State {
 	public:
 		typedef std::pair<ReturnedValue, State> bState;
 
+		// Travel info
 		std::map<Agent, float> cash;
 		std::map<std::pair<Location, Location>, float> dist;
 		std::map<Agent, Location> loc;
 		std::map<Agent, float> owe;
 
+		// Blocksworld info
+		std::map<Block, Block> pos;
+		std::map<Block, bool> clear;
+		Block holding;
+
 	public:
-		State() : name("") {}
-		State(std::string a_name) : name(a_name) {}
+		State() : name(""), holding(Block::none) {}
+		State(std::string a_name) : name(a_name), holding(Block::none) {}
 
 		~State() {}
 
 		inline std::string get_name() const { return name; }
-		void clear() {
+		void Clear() {
 			name = "";
 			cash.clear();
 			dist.clear();
 			loc.clear();
 			owe.clear();
+			pos.clear();
+			clear.clear();
+			Block holding = Block::none;
 		}
 };
 
 State empty;
 
+// Print each variable in state, indented by indent spaces.
+void print_state(State::bState state, unsigned short indent = 4)
+{
+	if (ReturnedValue::True == state.first)
+	{
+		for (auto o : state.second.cash)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::cash::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
+		for (auto o : state.second.dist)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::dist::{" + GetStringLocation(o.first.first) + "," + GetStringLocation(o.first.second) + "} = " << o.second /* float */ << std::endl;
+		for (auto o : state.second.loc)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::loc::" + GetStringAgent(o.first) + " = " + GetStringLocation(o.second) << std::endl;
+		for (auto o : state.second.owe)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::owe::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
+	}
+	else
+		std::cout << "False" << std::endl;
+}
+
 struct Parameters {
 	public:
+		// Travel
 		Agent a;
 		Location x;
 		Location y;
 
+		// Blocksworld
+		Block b;
+		Block c;
+
 	public:
-		Parameters() : a(Agent::none), x(Location::none), y(Location::none) {}
-		Parameters(Agent a_a) : a(a_a), x(Location::none), y(Location::none) {}
-		Parameters(Agent a_a, Location a_x) : a(a_a), x(a_x), y(Location::none) {}
-		Parameters(Agent a_a, Location a_x, Location a_y) : a(a_a), x(a_x), y(a_y) {}
+		Parameters() : a(Agent::none), x(Location::none), y(Location::none), b(Block::none), c(Block::none) {}
+		Parameters(Agent a_a) : a(a_a), x(Location::none), y(Location::none), b(Block::none), c(Block::none) {}
+		Parameters(Agent a_a, Location a_x) : a(a_a), x(a_x), y(Location::none), b(Block::none), c(Block::none) {}
+		Parameters(Agent a_a, Location a_x, Location a_y) : a(a_a), x(a_x), y(a_y), b(Block::none), c(Block::none) {}
+
+		Parameters(Block b_b) : b(b_b), c(Block::none), a(Agent::none), x(Location::none), y(Location::none) {}
+		Parameters(Block b_b, Block c_c) : b(b_b), c(c_c), a(Agent::none), x(Location::none), y(Location::none) {}
 
 		void print()
 		{
@@ -65,6 +101,10 @@ struct Parameters {
 				p += (", " + std::string(GetStringLocation(x)));
 			if (Location::none != y)
 				p += (", " + std::string(GetStringLocation(y)));
+			if (Block::none != b)
+				p += (", " + std::string(GetStringBlock(b)));
+			if (Block::none != c)
+				p += (", " + std::string(GetStringBlock(c)));
 			std::cout << p;
 		}
 };
@@ -73,6 +113,21 @@ struct Parameters {
 using Ptr2Operator = State::bState(*)(State, Parameters);
 typedef std::map<OperatorId, Ptr2Operator> Operators;
 
+// Print out the names of the operators
+void print_operators(Operators operators)
+{
+	std::cout << "OPERATORS: ";
+	for (std::map<OperatorId, Ptr2Operator>::iterator o = operators.begin(); o != operators.end();)
+	{
+		std::cout << (o->first);
+		if (++o != operators.end())
+			std::cout << ", ";
+	}
+	std::cout << "." << std::endl;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Travel Operators 
 float taxi_rate(float dist)
 {
 	return (1.5f + 0.5f * dist);
@@ -124,10 +179,75 @@ State::bState pay_driver(State state, Parameters p)
 		return { ReturnedValue::False, empty };
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Blocksworld Operators 
+State::bState pickup(State state, Parameters p)
+{
+	if (state.pos[p.b] == Block::table && state.clear[p.b] == true && state.holding == Block::none)
+	{
+		State result = state;
+		result.pos[p.b] = Block::hand;
+		result.clear[p.b] = false;
+		result.holding = p.b;
+		return { ReturnedValue::True, result };
+	}
+	else
+		return { ReturnedValue::False, empty };
+}
+
+State::bState unstack(State state, Parameters p)
+{
+	if (state.pos[p.b] == p.c && p.c != Block::table && state.clear[p.b] == true && state.holding == Block::none)
+	{
+		State result = state;
+		result.pos[p.b] = Block::hand;
+		result.clear[p.b] = false;
+		result.holding = p.b;
+		result.clear[p.c] = true;
+		return { ReturnedValue::True, result };
+	}
+	else
+		return { ReturnedValue::False, empty };
+
+}
+
+State::bState putdown(State state, Parameters p)
+{
+	if (state.pos[p.b] == Block::hand)
+	{
+		State result = state;
+		result.pos[p.b] = Block::table;
+		result.clear[p.b] = true;
+		result.holding = Block::none;
+		return { ReturnedValue::True, result };
+	}
+	else
+		return { ReturnedValue::False, empty };
+}
+
+State::bState stack(State state, Parameters p)
+{
+	if (state.pos[p.b] == Block::hand && state.clear[p.c] == true)
+	{
+		State result = state;
+		result.pos[p.b] = p.c;
+		result.clear[p.b] = true;
+		result.holding = Block::none;
+		result.clear[p.c] = false;
+		return { ReturnedValue::True, result };
+	}
+	else
+		return { ReturnedValue::False, empty };
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Tasks 
 typedef std::pair<TaskId, Parameters> Task;
 typedef std::vector<Task> Tasks;
 typedef std::pair<ReturnedValue, Tasks> bTasks;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Travel Tasks 
 bTasks travel_by_foot(State state, Parameters p)
 {
 	if (state.dist[{p.x, p.y}] <= 2)
@@ -142,37 +262,6 @@ bTasks travel_by_taxi(State state, Parameters p)
 		return { ReturnedValue::True, { Task(OperatorId("call_taxi"), p), Task(OperatorId("ride_taxi"), p), Task(OperatorId("pay_driver"), p) } };
 	else
 		return { ReturnedValue::False, {} };
-}
-
-// Print each variable in state, indented by indent spaces.
-void print_state(State::bState state, unsigned short indent = 4)
-{
-	if (ReturnedValue::True == state.first)
-	{
-		for (auto o : state.second.cash)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::cash::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.dist)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::dist::{" + GetStringLocation(o.first.first) + "," + GetStringLocation(o.first.second) + "} = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.loc)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::loc::" + GetStringAgent(o.first) + " = " + GetStringLocation(o.second) << std::endl;
-		for (auto o : state.second.owe)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::owe::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
-	}
-	else
-		std::cout << "False" << std::endl;
-}
-
-// Print out the names of the operators
-void print_operators(Operators operators)
-{
-	std::cout << "OPERATORS: ";
-	for (std::map<OperatorId, Ptr2Operator>::iterator o = operators.begin(); o != operators.end();)
-	{
-		std::cout << (o->first);
-		if (++o != operators.end())
-			std::cout << ", ";
-	}
-	std::cout << "." << std::endl;
 }
 
 // Declare methods
@@ -356,6 +445,11 @@ bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, SubT
 
 int main()
 {
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//   TESTS
+	//
+	///////////////////////////////////////////////////////////////////////////////////////////////
 	print_state({ ReturnedValue::False, empty });
 	print_state({ ReturnedValue::True, empty });
 
@@ -368,7 +462,12 @@ int main()
 	print_state({ ReturnedValue::True, state1 });
 	print_state({ ReturnedValue::False, state1 });
 
-	// Declare operators
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//   TRAVEL
+	//
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Declare Tavel operators
 	Operators operators;
 	operators[OperatorId("walk")] = walk;
 	operators[OperatorId("call_taxi")] = call_taxi;
@@ -382,7 +481,7 @@ int main()
 	// print('')
 	std::cout << std::endl;
 
-	// Declare Methods
+	// Declare Travel Methods
 	SubTasks subtasks;
 	subtasks[MethodId("travel_by_foot")] = travel_by_foot;
 	subtasks[MethodId("travel_by_taxi")] = travel_by_taxi;
@@ -407,5 +506,42 @@ int main()
 	std::cout << "- If verbose=3, hop++ also prints the intermediate states:" << std::endl;
 	plan(state1, { Initial }, operators, travel_methods, subtasks, 3);
 
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	//
+	//   BLOCKSWORLD
+	//
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	// Declare Blocksworld operators
+	operators.clear();
+	operators[OperatorId("pickup")] = pickup;
+	operators[OperatorId("unstack")] = unstack;
+	operators[OperatorId("putdown")] = putdown;
+	operators[OperatorId("stack")] = stack;
+
+	subtasks.clear();
+	subtasks[MethodId("travel_by_foot")] = travel_by_foot;
+	subtasks[MethodId("travel_by_taxi")] = travel_by_taxi;
+
+	print_operators(operators);
+
+	// #############     beginning of tests     ################
+	
+	std::cout << "***********************************************************" << std::endl
+		      << "First, test pyhop on some of the operatorsand smaller tasks" << std::endl
+	          << "***********************************************************" << std::endl;
+
+	std::cout << std::endl << "- Define state1: a on b, b on tale, c on table" << std::endl;
+
+	state1.Clear();
+	state1.pos = { { Block::a, Block::b }, { Block::b, Block::table}, { Block::c, Block::table} };
+	state1.clear = { { Block::c, true }, { Block::b, false}, { Block::a, true } };
+	state1.holding = Block::none;
+
+	print_state({ ReturnedValue::True, state1 });
+	std::cout << std::endl;
+
+	std::cout << "- these should fail:" << std::endl;
+	plan(state1, { { TaskId("pickup"), Parameters(Block::a) } }, operators, bw_methods, subtasks, 3);
+	plan(state1, { { TaskId("pickup"), Parameters(Block::b) } }, operators, bw_methods, subtasks, 3);
 	return 0;
 }
