@@ -7,7 +7,7 @@ PyHop is a simple Hierarchical Task Network (HTN) planner written in Python by [
 
 The file "MyHop.py" contains the python code to run the PyHop "Travel" example; tested with VS 2019 Python. I've uploaded this file so that you can compare the C++ code to the Python code.
 
-I did my best to keep PyHop identifiers in the C++ code, and to print exactly what and when PyHop does print something, so you should be able to follow the C++ code from the Python code.
+I did my best to (i) keep PyHop identifiers in the C++ code, and (ii) print exactly what and when PyHop does print something, so you should be able to follow the C++ code from the Python code.
 
 Currently:
 1. C++ code only runs the travel example from PyHop; other examples will follow.
