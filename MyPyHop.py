@@ -211,7 +211,7 @@ def travel_by_taxi(state,a,x,y):
         return [('call_taxi',a,x), ('ride_taxi',a,x,y), ('pay_driver',a)]
     return False
 
-declare_methods('travel')
+declare_methods('travel',travel_by_foot,travel_by_taxi)
 print('')
 print_methods(get_methods())
 
