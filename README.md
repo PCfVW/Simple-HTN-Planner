@@ -17,3 +17,5 @@ Currently:
 3. I've branched this project to produce a version able to run PyHop's blocks-world examples; its name is "Blocksworld" and is currently under development.
 
 4. Get the master branch to get a stable version which (only) runs the travel example.
+
+5. The Blocksworld branch is now closer to PyHop's Python code and also runs the travel example correctly; only the first should-fail & should-succeed blocks world examples run correctly. 
