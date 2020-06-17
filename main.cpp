@@ -20,7 +20,6 @@ class State {
 		std::string name;
 
 	public:
-		typedef std::pair<ReturnedValue, State> bState;
 
 		// Travel info
 		std::map<Agent, float> cash;
@@ -53,24 +52,6 @@ class State {
 };
 
 State empty;
-
-// Print each variable in state, indented by indent spaces.
-void print_state(State::bState state, unsigned short indent = 4)
-{
-	if (ReturnedValue::True == state.first)
-	{
-		for (auto o : state.second.cash)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::cash::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.dist)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::dist::{" + GetStringLocation(o.first.first) + "," + GetStringLocation(o.first.second) + "} = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.loc)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::loc::" + GetStringAgent(o.first) + " = " + GetStringLocation(o.second) << std::endl;
-		for (auto o : state.second.owe)
-			std::cout << std::setw(indent) << "" << state.second.get_name() + "::owe::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
-	}
-	else
-		std::cout << "False" << std::endl;
-}
 
 struct Parameters {
 	public:
@@ -110,8 +91,14 @@ struct Parameters {
 };
 
 // Declare Operators
-using Ptr2Operator = State::bState(*)(State, Parameters);
+typedef std::pair<ReturnedValue, State> bState;
+using Ptr2Operator = bState(*)(State, Parameters);
 typedef std::map<OperatorId, Ptr2Operator> Operators;
+Operators operators;
+void declare_operators(OperatorId a_OperatorId, Ptr2Operator a_Ptr2Operator)
+{
+	operators[a_OperatorId] = a_Ptr2Operator;
+}
 
 // Print out the names of the operators
 void print_operators(Operators operators)
@@ -133,7 +120,7 @@ float taxi_rate(float dist)
 	return (1.5f + 0.5f * dist);
 }
 
-State::bState walk(State state, Parameters p)
+bState walk(State state, Parameters p)
 {
 	if (state.loc[p.a] == p.x)
 	{
@@ -145,14 +132,14 @@ State::bState walk(State state, Parameters p)
 		return { ReturnedValue::False, empty };
 }
 
-State::bState call_taxi(State state, Parameters p)
+bState call_taxi(State state, Parameters p)
 {
 	State result = state;
 	result.loc[Agent::taxi] = p.x;
 	return { ReturnedValue::True, result };
 }
 
-State::bState ride_taxi(State state, Parameters p)
+bState ride_taxi(State state, Parameters p)
 {
 	if (state.loc[Agent::taxi] == p.x && state.loc[p.a] == p.x)
 	{
@@ -166,7 +153,7 @@ State::bState ride_taxi(State state, Parameters p)
 		return { ReturnedValue::False, empty };
 }
 
-State::bState pay_driver(State state, Parameters p)
+bState pay_driver(State state, Parameters p)
 {
 	if (state.cash[p.a] >= state.owe[p.a])
 	{
@@ -181,7 +168,7 @@ State::bState pay_driver(State state, Parameters p)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Blocksworld Operators 
-State::bState pickup(State state, Parameters p)
+bState pickup(State state, Parameters p)
 {
 	if (state.pos[p.b] == Block::table && state.clear[p.b] == true && state.holding == Block::none)
 	{
@@ -195,7 +182,7 @@ State::bState pickup(State state, Parameters p)
 		return { ReturnedValue::False, empty };
 }
 
-State::bState unstack(State state, Parameters p)
+bState unstack(State state, Parameters p)
 {
 	if (state.pos[p.b] == p.c && p.c != Block::table && state.clear[p.b] == true && state.holding == Block::none)
 	{
@@ -211,7 +198,7 @@ State::bState unstack(State state, Parameters p)
 
 }
 
-State::bState putdown(State state, Parameters p)
+bState putdown(State state, Parameters p)
 {
 	if (state.pos[p.b] == Block::hand)
 	{
@@ -225,7 +212,7 @@ State::bState putdown(State state, Parameters p)
 		return { ReturnedValue::False, empty };
 }
 
-State::bState stack(State state, Parameters p)
+bState stack(State state, Parameters p)
 {
 	if (state.pos[p.b] == Block::hand && state.clear[p.c] == true)
 	{
@@ -266,11 +253,17 @@ bTasks travel_by_taxi(State state, Parameters p)
 
 // Declare methods
 using Ptr2Method = bTasks(*)(State, Parameters);
-typedef std::map<MethodId, Ptr2Method> SubTasks;
-
-// Declare HTNs
-typedef std::map<TaskId, std::vector<TaskId>> Methods;
-Methods travel_methods = { {TaskId("travel"), {MethodId("travel_by_foot"), MethodId("travel_by_taxi")}} };
+typedef std::map<TaskId, std::vector<Ptr2Method>> Methods;
+Methods methods;
+template<typename T> void declare_methods(TaskId a_TaskId, T a_method)
+{
+	methods[a_TaskId].push_back(a_method);
+}
+template<typename T, typename... Args> void declare_methods(TaskId a_TaskId, T a_method, Args... more_methods)
+{
+	methods[a_TaskId].push_back(a_method);
+	return declare_methods(a_TaskId, more_methods...);
+}
 
 // Print out a table of what the methods are for each task
 void print_methods(Methods mlist)
@@ -279,7 +272,7 @@ void print_methods(Methods mlist)
 	for (auto task : mlist)
 	{
 		std::cout << std::setw(14) << std::left << task.first;
-		for (std::vector<MethodId>::iterator m = task.second.begin(); m != task.second.end();)
+		for (std::vector<Ptr2Method>::iterator m = task.second.begin(); m != task.second.end();)
 		{
 			std::cout << (*m);
 			if (++m != task.second.end())
@@ -289,16 +282,74 @@ void print_methods(Methods mlist)
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Blocksworld Tasks 
+bTasks moveb_m(State state, Parameters p)
+{
+	return { ReturnedValue::None, { } };
+}
+
+bTasks move1(State state, Parameters p)
+{
+	return { ReturnedValue::True, { Task(OperatorId("get"),p), Task(OperatorId("put"),p) } };
+}
+
+bTasks get_m(State state, Parameters p)
+{
+	if (state.clear[p.b] == true)
+		if (state.pos[p.b] == Block::table)
+			return { ReturnedValue::True, { Task(OperatorId("pickup"),p) } };
+		else
+		{
+			p.c = state.pos[p.b];
+			return { ReturnedValue::True, { Task(OperatorId("unstack"),p) } };
+		}
+	else
+		return { ReturnedValue::False, {} };
+}
+
+bTasks put_m(State state, Parameters p)
+{
+	if (state.holding == p.b)
+		if (p.c == Block::table)
+			return { ReturnedValue::True, { Task(OperatorId("putdown"),p) } };
+		else
+		{
+			p.c = state.pos[p.b];
+			return { ReturnedValue::True, { Task(OperatorId("stack"),p) } };
+		}
+	else
+		return { ReturnedValue::False, {} };
+}
+
+// Print each variable in state, indented by indent spaces.
+void print_state(bState state, unsigned short indent = 4)
+{
+	if (ReturnedValue::True == state.first)
+	{
+		for (auto o : state.second.cash)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::cash::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
+		for (auto o : state.second.dist)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::dist::{" + GetStringLocation(o.first.first) + "," + GetStringLocation(o.first.second) + "} = " << o.second /* float */ << std::endl;
+		for (auto o : state.second.loc)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::loc::" + GetStringAgent(o.first) + " = " + GetStringLocation(o.second) << std::endl;
+		for (auto o : state.second.owe)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::owe::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
+	}
+	else
+		std::cout << "False" << std::endl;
+}
+
 // ############################################################
 // The actual planner
 
-bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, bTasks plan, unsigned int depth, unsigned short verbose);
+bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, unsigned int depth, unsigned short verbose);
 
-bTasks search_operators(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
+bTasks search_operators(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
 {
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " action = " << task.first << std::endl;
-	State::bState newstate = (operators[task.first])(state, task.second);
+	bState newstate = (operators[task.first])(state, task.second);
 	if (verbose > 2)
 	{
 		std::cout << "depth = " << depth << " new state: " << std::endl;
@@ -309,7 +360,7 @@ bTasks search_operators(State state, Tasks tasks, Operators operators, Methods m
 		bTasks newplan = plan;
 		tasks.pop_back();
 		newplan.second.push_back(task);
-		bTasks solution = seek_plan(newstate.second, tasks, operators, methods, subtasks, newplan, depth + 1, verbose);
+		bTasks solution = seek_plan(newstate.second, tasks, operators, methods, newplan, depth + 1, verbose);
 		if (ReturnedValue::False != solution.first)
 			return solution;
 	}
@@ -317,15 +368,15 @@ bTasks search_operators(State state, Tasks tasks, Operators operators, Methods m
 	return { newstate.first, {} };
 }
 
-bTasks search_methods(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
+bTasks search_methods(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
 {
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " method instance = " << task.first << std::endl;
-	std::vector<TaskId> relevant = methods[task.first];
+	std::vector<Ptr2Method> relevant = methods[task.first];
 	if (verbose > 2)
 	{
 		std::cout << "relevant: {";
-		for (std::vector<TaskId>::iterator r = relevant.begin(); r != relevant.end(); )
+		for (std::vector<Ptr2Method>::iterator r = relevant.begin(); r != relevant.end(); )
 		{
 			std::cout << (*r);
 			if (++r != relevant.end())
@@ -334,37 +385,31 @@ bTasks search_methods(State state, Tasks tasks, Operators operators, Methods met
 		std::cout << "}" << std::endl;
 	}
 
-	for (std::vector<TaskId>::iterator r = relevant.begin(); r != relevant.end(); r++)
+	for (std::vector<Ptr2Method>::iterator r = relevant.begin(); r != relevant.end(); r++)
 	{
-		const SubTasks::iterator it_st = subtasks.find(*r);
-		if (it_st != subtasks.end())
+		bTasks SubTasks = (*r)(state, task.second);
+		// Can't just say "if subtasks:", because that's wrong if subtasks == []
+		if (verbose > 2)
 		{
-			bTasks SubTasks = (subtasks[(*r)])(state, task.second);
-			// Can't just say "if subtasks:", because that's wrong if subtasks == []
-			if (verbose > 2)
+			std::cout << "method = " << (*r) << std::endl;
+			std::cout << "depth = " << depth << " new tasks: {";
+			for (Tasks::iterator r = SubTasks.second.begin(); r != SubTasks.second.end(); )
 			{
-				std::cout << "method = " << (*r) << std::endl;
-				std::cout << "depth = " << depth << " new tasks: {";
-				for (Tasks::iterator r = SubTasks.second.begin(); r != SubTasks.second.end(); )
-				{
-					std::cout << r->first;
-					if (++r != SubTasks.second.end())
-						std::cout << ", ";
-				}
-				std::cout << "}" << std::endl;
+				std::cout << r->first;
+				if (++r != SubTasks.second.end())
+					std::cout << ", ";
 			}
-			if (ReturnedValue::False != SubTasks.first)
-			{
-				tasks.pop_back();
-				for (Tasks::iterator i = SubTasks.second.end(); i != SubTasks.second.begin(); )
-					tasks.push_back(*(--i));
-				bTasks solution = seek_plan(state, tasks, operators, methods, subtasks, plan, depth + 1, verbose);
-				if (ReturnedValue::False != solution.first)
-					return solution;
-			}
+			std::cout << "}" << std::endl;
 		}
-		else
-			std::cout << "method >>" << (*r) << "<< is unknown; it may be mispelled." << std::endl;
+		if (ReturnedValue::False != SubTasks.first)
+		{
+			tasks.pop_back();
+			for (Tasks::iterator i = SubTasks.second.end(); i != SubTasks.second.begin(); )
+				tasks.push_back(*(--i));
+			bTasks solution = seek_plan(state, tasks, operators, methods, plan, depth + 1, verbose);
+			if (ReturnedValue::False != solution.first)
+				return solution;
+		}
 	}
 
 	return { ReturnedValue::None, {} };
@@ -374,7 +419,7 @@ bTasks search_methods(State state, Tasks tasks, Operators operators, Methods met
 // - plan is the current partial plan.
 // - depth is the recursion depth, for use in debugging
 // - verbose is whether to print debugging messages
-bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, bTasks plan, unsigned int depth, unsigned short verbose = 0)
+bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, unsigned int depth, unsigned short verbose = 0)
 {
 	if (verbose > 1)
 	{
@@ -397,11 +442,11 @@ bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods,
 	Task task = tasks.back();
 	const Operators::iterator it_op = operators.find(task.first);
 	if (it_op != operators.end())
-		return search_operators(state, tasks, operators, methods, subtasks, plan, task, depth, verbose);
+		return search_operators(state, tasks, operators, methods, plan, task, depth, verbose);
 
 	const Methods::iterator it_me = methods.find(task.first);
 	if (it_me != methods.end())
-		return search_methods(state, tasks, operators, methods, subtasks, plan, task, depth, verbose);
+		return search_methods(state, tasks, operators, methods, plan, task, depth, verbose);
 
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " returns failure." << std::endl;
@@ -411,14 +456,14 @@ bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods,
 
 // Try to find a plan that accomplishes tasks in state.
 // If successful, return the plan. Otherwise return False.
-bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, SubTasks subtasks, unsigned short verbose = 0)
+bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, unsigned short verbose = 0)
 {
 	if (verbose > 0)
 	{
 		std::cout << "** hop++, verbose = " << verbose << ": **" << std::endl;
 		std::cout << "   state = " << state.get_name() << std::endl;
 	}
-	bTasks result = seek_plan(state, tasks, operators, methods, subtasks, {}, 0, verbose);
+	bTasks result = seek_plan(state, tasks, operators, methods, {}, 0, verbose);
 	if (verbose > 0)
 	{
 		if (ReturnedValue::True == result.first)
@@ -468,25 +513,22 @@ int main()
 	//
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	// Declare Tavel operators
-	Operators operators;
-	operators[OperatorId("walk")] = walk;
-	operators[OperatorId("call_taxi")] = call_taxi;
-	operators[OperatorId("ride_taxi")] = ride_taxi;
-	operators[OperatorId("pay_driver")] = pay_driver;
+	declare_operators(OperatorId("walk"), walk);
+	declare_operators(OperatorId("call_taxi"), call_taxi);
+	declare_operators(OperatorId("ride_taxi"), ride_taxi);
+	declare_operators(OperatorId("pay_driver"), pay_driver);
 
 	print_operators(operators);
 	
-	State::bState ort2 = (operators[OperatorId("call_taxi")])(state1, Parameters(Agent::me, Location::home));
+	bState ort2 = (operators[OperatorId("call_taxi")])(state1, Parameters(Agent::me, Location::home));
 
 	// print('')
 	std::cout << std::endl;
 
 	// Declare Travel Methods
-	SubTasks subtasks;
-	subtasks[MethodId("travel_by_foot")] = travel_by_foot;
-	subtasks[MethodId("travel_by_taxi")] = travel_by_taxi;
+	declare_methods(TaskId("travel"), travel_by_foot, travel_by_taxi);
 
-	print_methods(travel_methods);
+	print_methods(methods);
 
 	Task Initial = { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) };
 
@@ -495,16 +537,16 @@ int main()
 			  << "*************************************************************************************" << std::endl;
 
 	std::cout << "- If verbose=0 (the default), hop++ returns the solution but prints nothing." << std::endl;
-	plan(state1, { Initial }, operators, travel_methods, subtasks);
+	plan(state1, { Initial }, operators, methods);
 
 	std::cout << "- If verbose=1, hop++ prints the problem and solution, and returns the solution:" << std::endl;
-	plan(state1, { Initial }, operators, travel_methods, subtasks, 1);
+	plan(state1, { Initial }, operators, methods, 1);
 
 	std::cout << "- If verbose=2, hop++ also prints a note at each recursive call:" << std::endl;
-	plan(state1, { Initial }, operators, travel_methods, subtasks, 2);
+	plan(state1, { Initial }, operators, methods, 2);
 
 	std::cout << "- If verbose=3, hop++ also prints the intermediate states:" << std::endl;
-	plan(state1, { Initial }, operators, travel_methods, subtasks, 3);
+	plan(state1, { Initial }, operators, methods, 3);
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//
@@ -518,17 +560,22 @@ int main()
 	operators[OperatorId("putdown")] = putdown;
 	operators[OperatorId("stack")] = stack;
 
-	subtasks.clear();
-	subtasks[MethodId("travel_by_foot")] = travel_by_foot;
-	subtasks[MethodId("travel_by_taxi")] = travel_by_taxi;
+	// Declare Blocksworld methods
+	methods.clear();
+	declare_methods(MethodId("move_blocks"),moveb_m);
+	declare_methods(MethodId("move_one"), move1);
+	declare_methods(MethodId("get"), get_m);
+	declare_methods(MethodId("put"), put_m);
 
+	std::cout << std::endl;
 	print_operators(operators);
+	std::cout << std::endl;
 
-	// #############     beginning of tests     ################
+	// #############     beginning of blocksworld tests     ################
 	
-	std::cout << "***********************************************************" << std::endl
-		      << "First, test pyhop on some of the operatorsand smaller tasks" << std::endl
-	          << "***********************************************************" << std::endl;
+	std::cout << "************************************************************" << std::endl
+		      << "First, test pyhop on some of the operators and smaller tasks" << std::endl
+	          << "************************************************************" << std::endl;
 
 	std::cout << std::endl << "- Define state1: a on b, b on tale, c on table" << std::endl;
 
@@ -541,7 +588,17 @@ int main()
 	std::cout << std::endl;
 
 	std::cout << "- these should fail:" << std::endl;
-	plan(state1, { { TaskId("pickup"), Parameters(Block::a) } }, operators, bw_methods, subtasks, 3);
-	plan(state1, { { TaskId("pickup"), Parameters(Block::b) } }, operators, bw_methods, subtasks, 3);
+	plan(state1, { { TaskId("pickup"), Parameters(Block::a) } }, operators, methods, 3);	// a is clear but is not on the table -- pickup requires a block to be both clear and on the table
+	plan(state1, { { TaskId("pickup"), Parameters(Block::b) } }, operators, methods, 3);	// b is on the table but is not clear -- pickup requires a block to be both clear and on the table
+
+	std::cout << "- these should succeed:" << std::endl;
+	plan(state1, { { TaskId("pickup"), Parameters(Block::c) } }, operators, methods, 3);			// a is both clear and on the table
+	plan(state1, { { TaskId("unstack"), Parameters(Block::a, Block::b) } }, operators, methods, 1);	// a is both clear and atop of b
+	plan(state1, { { TaskId("get"), Parameters(Block::a) } }, operators, methods, 1);
+	std::cout << "- this should fail:" << std::endl;
+	plan(state1, { { TaskId("get"), Parameters(Block::b) } }, operators, methods, 1);
+	std::cout << "- this should succeed:" << std::endl;
+	plan(state1, { { TaskId("get"), Parameters(Block::c) } }, operators, methods, 1);
+
 	return 0;
 }
