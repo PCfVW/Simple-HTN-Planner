@@ -1,5 +1,6 @@
 // Main for both travel and blocksworld examples
 //
+#include <algorithm>		// Visibility for std::find_if
 #include <iomanip>			// Visibility for std::setw, std::left, std::right
 #include <iostream>			// Visibility for stc::cout, std::endl
 #include <map>				// Visibility for std::map
@@ -8,6 +9,7 @@
 
 #include "EnumAgent.h"			// Application Domain: Travel
 #include "EnumBlock.h"			// Application Domain: Blocksworld
+#include "EnumBlockStatus.h"	// Application Domain: Blocksworld
 #include "EnumLocation.h"		// Application Domain: Travel
 #include "EnumReturnedValue.h"	// Visibility for None, False, and True
 
@@ -39,6 +41,7 @@ class State {
 		~State() {}
 
 		inline std::string get_name() const { return name; }
+		inline void set_name(const std::string a_name) { name = a_name; }
 		void Clear() {
 			name = "";
 			cash.clear();
@@ -52,6 +55,7 @@ class State {
 };
 
 State empty;
+typedef State Goal;
 
 struct Parameters {
 	public:
@@ -63,15 +67,19 @@ struct Parameters {
 		// Blocksworld
 		Block b;
 		Block c;
+		Goal goal;
 
 	public:
-		Parameters() : a(Agent::none), x(Location::none), y(Location::none), b(Block::none), c(Block::none) {}
-		Parameters(Agent a_a) : a(a_a), x(Location::none), y(Location::none), b(Block::none), c(Block::none) {}
-		Parameters(Agent a_a, Location a_x) : a(a_a), x(a_x), y(Location::none), b(Block::none), c(Block::none) {}
-		Parameters(Agent a_a, Location a_x, Location a_y) : a(a_a), x(a_x), y(a_y), b(Block::none), c(Block::none) {}
+		Parameters() : a(Agent::none), x(Location::none), y(Location::none), b(Block::none), c(Block::none), goal(empty) {}
+		Parameters(Agent a_a) : a(a_a), x(Location::none), y(Location::none), b(Block::none), c(Block::none), goal(empty) {}
+		Parameters(Agent a_a, Location a_x) : a(a_a), x(a_x), y(Location::none), b(Block::none), c(Block::none), goal(empty) {}
+		Parameters(Agent a_a, Location a_x, Location a_y) : a(a_a), x(a_x), y(a_y), b(Block::none), c(Block::none), goal(empty) {}
 
-		Parameters(Block b_b) : b(b_b), c(Block::none), a(Agent::none), x(Location::none), y(Location::none) {}
-		Parameters(Block b_b, Block c_c) : b(b_b), c(c_c), a(Agent::none), x(Location::none), y(Location::none) {}
+		Parameters(Block b_b) : b(b_b), c(Block::none), a(Agent::none), x(Location::none), y(Location::none), goal(empty) {}
+		Parameters(Block b_b, Block c_c) : b(b_b), c(c_c), a(Agent::none), x(Location::none), y(Location::none), goal(empty) {}
+		Parameters(Goal g_goal) : a(Agent::none), x(Location::none), y(Location::none), b(Block::none), c(Block::none), goal(g_goal) {}
+		Parameters(Block b_b, Goal g_goal) : b(b_b), c(Block::none), a(Agent::none), x(Location::none), y(Location::none), goal(g_goal) {}
+		Parameters(Block b_b, Block c_c, Goal g_goal) : b(b_b), c(c_c), a(Agent::none), x(Location::none), y(Location::none), goal(g_goal) {}
 
 		void print()
 		{
@@ -89,6 +97,22 @@ struct Parameters {
 			std::cout << p;
 		}
 };
+
+// Helpers
+bool is_done(Block b1, State& state, Goal& goal, Block done_state)
+{
+	if (b1 == done_state)
+		return true;
+
+	std::map<Block, Block>::iterator it_b1 = goal.pos.find(b1);
+	if ((goal.pos.end() != it_b1) && (goal.pos[b1] != state.pos[b1]))
+		return false;
+	
+	if (state.pos[b1] == done_state)
+		return true;
+
+	return is_done(state.pos[b1], state, goal, done_state);
+}
 
 // Declare Operators
 typedef std::pair<ReturnedValue, State> bState;
@@ -251,6 +275,89 @@ bTasks travel_by_taxi(State state, Parameters p)
 		return { ReturnedValue::False, {} };
 }
 
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Blocksworld Tasks 
+
+//	A helper function used in the methods' preconditions.
+BlockStatus status(Block b1, State state, Goal goal, Block done_state)
+{
+	std::map<Block, Block>::iterator it_b1 = goal.pos.find(b1);
+	if (is_done(b1, state, goal, done_state))
+		return BlockStatus::done;
+	else if (state.clear[b1] == false)
+		return BlockStatus::inaccessible;
+	else if ((goal.pos.end() == it_b1) || (goal.pos[b1] == done_state))
+		return BlockStatus::move_to_table;
+	else if (is_done(goal.pos[b1], state, goal, done_state) && state.clear[goal.pos[b1]])
+		return BlockStatus::move_to_block;
+	else
+		return BlockStatus::waiting;
+}
+
+bTasks moveb_m(State state, Parameters p)
+{
+	//	This method implements the following block - stacking algorithm :
+	//	If there's a block that can be moved to its final position, then
+	//	do soand call move_blocks recursively. Otherwise, if there's a
+	//	block that needs to be moved and can be moved to the table, then
+	//	do so and call move_blocks recursively. Otherwise, no blocks need
+	//	to be moved.
+	for (std::map<Block, bool>::iterator it_clear = state.clear.begin(); it_clear != state.clear.end(); ++it_clear)
+	{
+		Block b1 = it_clear->first;
+		BlockStatus s = status(b1, state, p.goal, Block::table);
+		if (s == BlockStatus::move_to_table)
+			return { ReturnedValue::True, { Task(MethodId("move_one"), Parameters(b1, Block::table, p.goal)), Task(MethodId("move_blocks"), p) } };
+		else if (s == BlockStatus::move_to_block)
+			return { ReturnedValue::True, { Task(MethodId("move_one"), Parameters(b1, p.goal.pos[b1], p.goal)), Task(MethodId("move_blocks"), p) } };
+		else
+			continue;
+	}
+
+	//
+	//	if we get here, no blocks can be moved to their final locations
+	std::map<Block, bool>::iterator it_b1 = std::find_if(state.clear.begin(), state.clear.end(), [&state, &p](std::pair<Block, bool> c){ return (BlockStatus::waiting == status(c.first, state, p.goal, Block::table)); });
+	if (it_b1 != state.clear.end())
+		return { ReturnedValue::True, { Task(MethodId("move_one"), Parameters(it_b1->first, Block::table)), Task(MethodId("move_blocks"), Parameters(p.goal)) } };
+
+	//
+	// if we get here, there are no blocks that need moving
+	return { ReturnedValue::None, { } };
+}
+
+bTasks move1(State state, Parameters p)
+{
+	return { ReturnedValue::True, { Task(OperatorId("get"), Parameters(p.b, p.goal) ), Task(OperatorId("put"), Parameters(p.b, p.c, p.goal)) } };
+}
+
+bTasks get_m(State state, Parameters p)
+{
+	if (state.clear[p.b] == true)
+		if (state.pos[p.b] == Block::table)
+			return { ReturnedValue::True, { Task(OperatorId("pickup"), Parameters(p.b, p.goal)) } };
+		else
+		{
+			p.c = state.pos[p.b];
+			return { ReturnedValue::True, { Task(OperatorId("unstack"), Parameters(p.b, state.pos[p.b], p.goal)) } };
+		}
+	else
+		return { ReturnedValue::False, {} };
+}
+
+bTasks put_m(State state, Parameters p)
+{
+	if (state.holding == p.b)
+		if (p.c == Block::table)
+			return { ReturnedValue::True, { Task(OperatorId("putdown"), Parameters(p.b, p.goal)) } };
+		else
+		{
+			return { ReturnedValue::True, { Task(OperatorId("stack"), Parameters(p.b, p.c, p.goal)) } };
+		}
+	else
+		return { ReturnedValue::False, {} };
+}
+
 // Declare methods
 using Ptr2Method = bTasks(*)(State, Parameters);
 typedef std::map<TaskId, std::vector<Ptr2Method>> Methods;
@@ -282,46 +389,6 @@ void print_methods(Methods mlist)
 	}
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-// Blocksworld Tasks 
-bTasks moveb_m(State state, Parameters p)
-{
-	return { ReturnedValue::None, { } };
-}
-
-bTasks move1(State state, Parameters p)
-{
-	return { ReturnedValue::True, { Task(OperatorId("get"),p), Task(OperatorId("put"),p) } };
-}
-
-bTasks get_m(State state, Parameters p)
-{
-	if (state.clear[p.b] == true)
-		if (state.pos[p.b] == Block::table)
-			return { ReturnedValue::True, { Task(OperatorId("pickup"),p) } };
-		else
-		{
-			p.c = state.pos[p.b];
-			return { ReturnedValue::True, { Task(OperatorId("unstack"),p) } };
-		}
-	else
-		return { ReturnedValue::False, {} };
-}
-
-bTasks put_m(State state, Parameters p)
-{
-	if (state.holding == p.b)
-		if (p.c == Block::table)
-			return { ReturnedValue::True, { Task(OperatorId("putdown"),p) } };
-		else
-		{
-			p.c = state.pos[p.b];
-			return { ReturnedValue::True, { Task(OperatorId("stack"),p) } };
-		}
-	else
-		return { ReturnedValue::False, {} };
-}
-
 // Print each variable in state, indented by indent spaces.
 void print_state(bState state, unsigned short indent = 4)
 {
@@ -335,17 +402,33 @@ void print_state(bState state, unsigned short indent = 4)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::loc::" + GetStringAgent(o.first) + " = " + GetStringLocation(o.second) << std::endl;
 		for (auto o : state.second.owe)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::owe::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
+		for (auto o : state.second.clear)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::clear::" + GetStringBlock(o.first) + " = " << o.second /* bool */ << std::endl;
+		for (auto o : state.second.pos)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::pos::" + GetStringBlock(o.first) + " = " << GetStringBlock(o.second) << std::endl;
+		if (state.second.clear.size() > 0 && state.second.pos.size() > 0)
+			std::cout << std::setw(indent) << "" << state.second.get_name() + "::holding::" + GetStringBlock(state.second.holding) << std::endl;
 	}
 	else
 		std::cout << "False" << std::endl;
 }
 
+void print_goal(Goal goal, unsigned short indent = 4)
+{
+	for (auto o : goal.clear)
+		std::cout << std::setw(indent) << "" << goal.get_name() + "::clear::" + GetStringBlock(o.first) + " = " << o.second /* bool */ << std::endl;
+	for (auto o : goal.pos)
+		std::cout << std::setw(indent) << "" << goal.get_name() + "::pos::" + GetStringBlock(o.first) + " = " << GetStringBlock(o.second) << std::endl;
+
+	std::cout << std::setw(indent) << "" << goal.get_name() + "::holding::" + GetStringBlock(goal.holding) << std::endl;
+}
+
 // ############################################################
 // The actual planner
 
-bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, unsigned int depth, unsigned short verbose);
+bTasks seek_plan(State& state, Tasks tasks, Operators& operators, Methods& methods, bTasks plan, unsigned int depth, unsigned short verbose);
 
-bTasks search_operators(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
+bTasks search_operators(State& state, Tasks tasks, Operators& operators, Methods& methods, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
 {
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " action = " << task.first << std::endl;
@@ -357,7 +440,11 @@ bTasks search_operators(State state, Tasks tasks, Operators operators, Methods m
 	}
 	if (ReturnedValue::True == newstate.first)
 	{
-		bTasks newplan = plan;
+		bTasks newplan;
+		if (plan.second.size() == 0)
+			newplan = { ReturnedValue::True, {} };
+		else 
+			newplan = plan;
 		tasks.pop_back();
 		newplan.second.push_back(task);
 		bTasks solution = seek_plan(newstate.second, tasks, operators, methods, newplan, depth + 1, verbose);
@@ -368,7 +455,7 @@ bTasks search_operators(State state, Tasks tasks, Operators operators, Methods m
 	return { newstate.first, {} };
 }
 
-bTasks search_methods(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
+bTasks search_methods(State& state, Tasks tasks, Operators& operators, Methods& methods, bTasks plan, Task task, unsigned int& depth, unsigned short verbose = 0)
 {
 	if (verbose > 2)
 		std::cout << "depth = " << depth << " method instance = " << task.first << std::endl;
@@ -419,7 +506,7 @@ bTasks search_methods(State state, Tasks tasks, Operators operators, Methods met
 // - plan is the current partial plan.
 // - depth is the recursion depth, for use in debugging
 // - verbose is whether to print debugging messages
-bTasks seek_plan(State state, Tasks tasks, Operators operators, Methods methods, bTasks plan, unsigned int depth, unsigned short verbose = 0)
+bTasks seek_plan(State& state, Tasks tasks, Operators& operators, Methods& methods, bTasks plan, unsigned int depth, unsigned short verbose = 0)
 {
 	if (verbose > 1)
 	{
@@ -519,7 +606,7 @@ int main()
 	declare_operators(OperatorId("pay_driver"), pay_driver);
 
 	print_operators(operators);
-	
+
 	bState ort2 = (operators[OperatorId("call_taxi")])(state1, Parameters(Agent::me, Location::home));
 
 	// print('')
@@ -533,8 +620,8 @@ int main()
 	Task Initial = { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) };
 
 	std::cout << "*************************************************************************************" << std::endl
-			  << "Call plan(state1, [('travel', 'me', 'home', 'park')]) with different verbosity levels" << std::endl
-			  << "*************************************************************************************" << std::endl;
+		<< "Call plan(state1, [('travel', 'me', 'home', 'park')]) with different verbosity levels" << std::endl
+		<< "*************************************************************************************" << std::endl;
 
 	std::cout << "- If verbose=0 (the default), hop++ returns the solution but prints nothing." << std::endl;
 	plan(state1, { Initial }, operators, methods);
@@ -562,7 +649,7 @@ int main()
 
 	// Declare Blocksworld methods
 	methods.clear();
-	declare_methods(MethodId("move_blocks"),moveb_m);
+	declare_methods(MethodId("move_blocks"), moveb_m);
 	declare_methods(MethodId("move_one"), move1);
 	declare_methods(MethodId("get"), get_m);
 	declare_methods(MethodId("put"), put_m);
@@ -572,14 +659,15 @@ int main()
 	std::cout << std::endl;
 
 	// #############     beginning of blocksworld tests     ################
-	
+
 	std::cout << "************************************************************" << std::endl
-		      << "First, test pyhop on some of the operators and smaller tasks" << std::endl
-	          << "************************************************************" << std::endl;
+		<< "First, test pyhop on some of the operators and smaller tasks" << std::endl
+		<< "************************************************************" << std::endl;
 
 	std::cout << std::endl << "- Define state1: a on b, b on tale, c on table" << std::endl;
 
 	state1.Clear();
+	state1.set_name("State1");
 	state1.pos = { { Block::a, Block::b }, { Block::b, Block::table}, { Block::c, Block::table} };
 	state1.clear = { { Block::c, true }, { Block::b, false}, { Block::a, true } };
 	state1.holding = Block::none;
@@ -599,6 +687,128 @@ int main()
 	plan(state1, { { TaskId("get"), Parameters(Block::b) } }, operators, methods, 1);
 	std::cout << "- this should succeed:" << std::endl;
 	plan(state1, { { TaskId("get"), Parameters(Block::c) } }, operators, methods, 1);
+
+	std::cout << std::endl
+		<< "**************************************************************************" << std::endl
+		<< "Run pyhop on two block - stacking problems, both of which start in state1." << std::endl
+		<< "The goal for the 2nd problem omits some of the conditions in the goal" << std::endl
+		<< "of the 1st problem, but those conditions will need to be achieved" << std::endl
+		<< "anyway, so both goals should produce the same plan." << std::endl
+		<< "**************************************************************************" << std::endl
+		<< std::endl;
+
+	std::cout << "- Define goal1a:"
+		<< std::endl;
+
+	//	A goal is a collection of some(but not necessarily all) of the state variables
+	//	and their desired values. Below, both goal1aand goal1b specify c on b, and b
+	//	on a. The difference is that goal1a also specifies that a is on table and the
+	//	hand is empty.
+
+	Goal goal1a = Goal("goal1a");
+	goal1a.pos = { { Block::c, Block::b }, { Block::b, Block::a }, { Block::a, Block::table} };
+	goal1a.clear = { { Block::c, true}, { Block::b, false }, { Block::a, false} };
+	goal1a.holding = Block::none;
+
+	print_goal(goal1a);
+
+	std::cout << std::endl
+		<< "- Define goal1b:"
+		<< std::endl;
+
+	Goal goal1b = Goal("goal1b");
+	goal1b.pos = { { Block::c, Block::b }, { Block::b, Block::a } };
+
+	print_goal(goal1b);
+
+	std::cout << std::endl;
+
+	// goal1b omits some of the conditions of goal1a,
+	// but those conditions will need to be achieved anyway
+
+	plan(state1, { { TaskId("move_blocks"), Parameters(goal1a) } }, operators, methods, 1);
+	plan(state1, { { TaskId("move_blocks"), Parameters(goal1b) } }, operators, methods, 1);
+
+	std::cout << std::endl
+		<< "**********************************************************************" << std::endl
+		<< "Run pyhop on two more planning problems. As before, the 2nd goal omits" << std::endl
+		<< "some of the conditions in the 1st goal, but both goals should produce" << std::endl
+		<< "the same plan." << std::endl
+		<< "**********************************************************************" << std::endl
+		<< std::endl;
+
+	std::cout << "- Define state 2:"
+		<< std::endl;
+
+	State state2("state2");
+	state2.pos = { { Block::a, Block::c }, { Block::b, Block::d }, { Block::c, Block::table }, { Block::d, Block::table} };
+	state2.clear = { {Block::a, true }, {Block::c, false }, { Block::b, true }, {Block::d, false} };
+	state2.holding = Block::none;
+
+	print_state({ ReturnedValue::True, state2 });
+
+	std::cout << std::endl
+			  << "- Define goal2a:"
+			  << std::endl;
+
+	Goal goal2a("goal2a");
+	goal2a.pos = { { Block::b, Block::c }, { Block::a, Block::d }, { Block::c, Block::table }, { Block::d, Block::table } };
+	goal2a.clear = { { Block::a, true }, { Block::c, false }, { Block::b, true }, { Block::d, false } };
+	goal2a.holding = Block::none;
+
+	print_goal(goal2a);
+
+	std::cout << std::endl
+			  << "- Define goal2b:"
+			  << std::endl;
+
+	Goal goal2b("goal2b");
+	goal2b.pos = { { Block::b, Block::c }, { Block::a, Block::d } };
+
+	print_goal(goal2b);
+	std::cout << std::endl;
+
+	// goal2b omits some of the conditions of goal2a,
+	// but those conditions will need to be achieved anyway.
+
+	plan(state2, { { TaskId("move_blocks"), Parameters(goal2a) } }, operators, methods, 1);
+	plan(state2, { { TaskId("move_blocks"), Parameters(goal2b) } }, operators, methods, 1);
+
+	std::cout << std::endl 
+			  << "*********************************************************************" << std::endl
+			  << "Test pyhop on planning problem bw_large_d from the SHOP distribution." << std::endl
+			  << "*********************************************************************"
+		      << std::endl;
+
+	std::cout << "- Define state3:" << std::endl;
+
+	State state3("state3");
+	state3.pos = { { Block::a, Block::l }, { Block::l, Block::m }, { Block::m, Block::table },
+					{ Block::k, Block::j }, { Block::j, Block::e }, { Block::e, Block::d }, { Block::d, Block::n }, { Block::n, Block::o }, { Block::o, Block::table },
+					{ Block::i, Block::h }, { Block::h, Block::g }, { Block::g, Block::f }, { Block::f, Block::table },
+					{ Block::s, Block::r }, { Block::r, Block::q }, { Block::q, Block::p }, { Block::p, Block::c }, { Block::c, Block::b }, { Block::b, Block::table } };
+	state3.clear = { { Block::a, true}, { Block::b, false}, { Block::c, false}, { Block::d, false}, { Block::e, false}, { Block::f, false}, { Block::g, false}, { Block::h, false},
+					 { Block::i, true}, { Block::j, false},
+					 { Block::k, true}, { Block::l, false}, { Block::m, false}, { Block::n, false}, { Block::o, false}, { Block::p, false}, { Block::q, false}, { Block::r, false},
+					 { Block::s, true}};
+	state3.holding = Block::none;
+
+	print_state({ ReturnedValue::True, state3 });
+
+	std::cout << std::endl
+			  << "- Define goal3:"
+			  << std::endl;
+
+	Goal goal3("goal3");
+	goal3.pos = { { Block::o, Block::m }, { Block::m, Block::h }, { Block::h, Block::i }, { Block::i, Block::d }, { Block::d, Block::table },
+					{ Block::l, Block::b }, { Block::b, Block::c }, { Block::c, Block::p }, { Block::p, Block::k }, { Block::k, Block::g },
+					{ Block::g, Block::f }, { Block::f, Block::table } };
+	goal3.clear = { { Block::q, true }, { Block::o, true }, { Block::l, true} };
+
+	print_goal(goal3);
+	std::cout << std::endl;
+
+	plan(state3, { { TaskId("move_blocks"), Parameters(goal3) } }, operators, methods, 1);
 
 	return 0;
 }
