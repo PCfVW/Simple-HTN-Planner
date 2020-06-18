@@ -22,7 +22,6 @@ class State {
 		std::string name;
 
 	public:
-
 		// Travel info
 		std::map<Agent, float> cash;
 		std::map<std::pair<Location, Location>, float> dist;
@@ -54,7 +53,7 @@ class State {
 		}
 };
 
-State empty;
+State empty("Empty");
 typedef State Goal;
 
 struct Parameters {
@@ -409,8 +408,10 @@ void print_state(bState state, unsigned short indent = 4)
 		if (state.second.clear.size() > 0 && state.second.pos.size() > 0)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::holding::" + GetStringBlock(state.second.holding) << std::endl;
 	}
+	else if (ReturnedValue::False == state.first)
+		std::cout << state.second.get_name() + "::False" << std::endl;
 	else
-		std::cout << "False" << std::endl;
+		std::cout << state.second.get_name() + "::None" << std::endl;
 }
 
 void print_goal(Goal goal, unsigned short indent = 4)
@@ -502,7 +503,7 @@ bTasks search_methods(State& state, Tasks tasks, Operators& operators, Methods& 
 	return { ReturnedValue::None, {} };
 }
 
-// Workhorse for pyhop.state, tasks, operators, and methods are as in the plan function.
+// Workhorse for pyhop. state, tasks, operators, and methods are as in the plan function.
 // - plan is the current partial plan.
 // - depth is the recursion depth, for use in debugging
 // - verbose is whether to print debugging messages
@@ -543,7 +544,7 @@ bTasks seek_plan(State& state, Tasks tasks, Operators& operators, Methods& metho
 
 // Try to find a plan that accomplishes tasks in state.
 // If successful, return the plan. Otherwise return False.
-bTasks plan(State state, Tasks tasks, Operators operators, Methods methods, unsigned short verbose = 0)
+bTasks plan(State& state, Tasks tasks, Operators& operators, Methods& methods, unsigned short verbose = 0)
 {
 	if (verbose > 0)
 	{
@@ -609,7 +610,6 @@ int main()
 
 	bState ort2 = (operators[OperatorId("call_taxi")])(state1, Parameters(Agent::me, Location::home));
 
-	// print('')
 	std::cout << std::endl;
 
 	// Declare Travel Methods
@@ -620,8 +620,9 @@ int main()
 	Task Initial = { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) };
 
 	std::cout << "*************************************************************************************" << std::endl
-		<< "Call plan(state1, [('travel', 'me', 'home', 'park')]) with different verbosity levels" << std::endl
-		<< "*************************************************************************************" << std::endl;
+			  << "Call plan(state1, [('travel', 'me', 'home', 'park')]) with different verbosity levels" << std::endl
+			  << "*************************************************************************************" << std::endl
+			  << std::endl;
 
 	std::cout << "- If verbose=0 (the default), hop++ returns the solution but prints nothing." << std::endl;
 	plan(state1, { Initial }, operators, methods);
@@ -661,10 +662,11 @@ int main()
 	// #############     beginning of blocksworld tests     ################
 
 	std::cout << "************************************************************" << std::endl
-		<< "First, test pyhop on some of the operators and smaller tasks" << std::endl
-		<< "************************************************************" << std::endl;
+			  << "First, test pyhop on some of the operators and smaller tasks" << std::endl
+			  << "************************************************************" << std::endl
+			  << std::endl;
 
-	std::cout << std::endl << "- Define state1: a on b, b on tale, c on table" << std::endl;
+	std::cout << "- Define state1: a on b, b on tale, c on table" << std::endl;
 
 	state1.Clear();
 	state1.set_name("State1");
@@ -689,16 +691,16 @@ int main()
 	plan(state1, { { TaskId("get"), Parameters(Block::c) } }, operators, methods, 1);
 
 	std::cout << std::endl
-		<< "**************************************************************************" << std::endl
-		<< "Run pyhop on two block - stacking problems, both of which start in state1." << std::endl
-		<< "The goal for the 2nd problem omits some of the conditions in the goal" << std::endl
-		<< "of the 1st problem, but those conditions will need to be achieved" << std::endl
-		<< "anyway, so both goals should produce the same plan." << std::endl
-		<< "**************************************************************************" << std::endl
-		<< std::endl;
+			  << "**************************************************************************" << std::endl
+			  << "Run pyhop on two block - stacking problems, both of which start in state1." << std::endl
+			  << "The goal for the 2nd problem omits some of the conditions in the goal"	  << std::endl
+			  << "of the 1st problem, but those conditions will need to be achieved"		  << std::endl
+			  << "anyway, so both goals should produce the same plan."						  << std::endl
+			  << "**************************************************************************" << std::endl
+			  << std::endl;
 
 	std::cout << "- Define goal1a:"
-		<< std::endl;
+			  << std::endl;
 
 	//	A goal is a collection of some(but not necessarily all) of the state variables
 	//	and their desired values. Below, both goal1aand goal1b specify c on b, and b
@@ -713,8 +715,8 @@ int main()
 	print_goal(goal1a);
 
 	std::cout << std::endl
-		<< "- Define goal1b:"
-		<< std::endl;
+			  << "- Define goal1b:"
+			  << std::endl;
 
 	Goal goal1b = Goal("goal1b");
 	goal1b.pos = { { Block::c, Block::b }, { Block::b, Block::a } };
@@ -730,15 +732,15 @@ int main()
 	plan(state1, { { TaskId("move_blocks"), Parameters(goal1b) } }, operators, methods, 1);
 
 	std::cout << std::endl
-		<< "**********************************************************************" << std::endl
-		<< "Run pyhop on two more planning problems. As before, the 2nd goal omits" << std::endl
-		<< "some of the conditions in the 1st goal, but both goals should produce" << std::endl
-		<< "the same plan." << std::endl
-		<< "**********************************************************************" << std::endl
-		<< std::endl;
+			  << "**********************************************************************" << std::endl
+			  << "Run pyhop on two more planning problems. As before, the 2nd goal omits" << std::endl
+			  << "some of the conditions in the 1st goal, but both goals should produce"  << std::endl
+			  << "the same plan."														  << std::endl
+			  << "**********************************************************************" << std::endl
+			  << std::endl;
 
 	std::cout << "- Define state 2:"
-		<< std::endl;
+			  << std::endl;
 
 	State state2("state2");
 	state2.pos = { { Block::a, Block::c }, { Block::b, Block::d }, { Block::c, Block::table }, { Block::d, Block::table} };
@@ -777,16 +779,16 @@ int main()
 	std::cout << std::endl 
 			  << "*********************************************************************" << std::endl
 			  << "Test pyhop on planning problem bw_large_d from the SHOP distribution." << std::endl
-			  << "*********************************************************************"
+			  << "*********************************************************************" << std::endl
 		      << std::endl;
 
 	std::cout << "- Define state3:" << std::endl;
 
 	State state3("state3");
 	state3.pos = { { Block::a, Block::l }, { Block::l, Block::m }, { Block::m, Block::table },
-					{ Block::k, Block::j }, { Block::j, Block::e }, { Block::e, Block::d }, { Block::d, Block::n }, { Block::n, Block::o }, { Block::o, Block::table },
-					{ Block::i, Block::h }, { Block::h, Block::g }, { Block::g, Block::f }, { Block::f, Block::table },
-					{ Block::s, Block::r }, { Block::r, Block::q }, { Block::q, Block::p }, { Block::p, Block::c }, { Block::c, Block::b }, { Block::b, Block::table } };
+				   { Block::k, Block::j }, { Block::j, Block::e }, { Block::e, Block::d }, { Block::d, Block::n }, { Block::n, Block::o }, { Block::o, Block::table },
+				   { Block::i, Block::h }, { Block::h, Block::g }, { Block::g, Block::f }, { Block::f, Block::table },
+				   { Block::s, Block::r }, { Block::r, Block::q }, { Block::q, Block::p }, { Block::p, Block::c }, { Block::c, Block::b }, { Block::b, Block::table } };
 	state3.clear = { { Block::a, true}, { Block::b, false}, { Block::c, false}, { Block::d, false}, { Block::e, false}, { Block::f, false}, { Block::g, false}, { Block::h, false},
 					 { Block::i, true}, { Block::j, false},
 					 { Block::k, true}, { Block::l, false}, { Block::m, false}, { Block::n, false}, { Block::o, false}, { Block::p, false}, { Block::q, false}, { Block::r, false},
@@ -801,14 +803,17 @@ int main()
 
 	Goal goal3("goal3");
 	goal3.pos = { { Block::o, Block::m }, { Block::m, Block::h }, { Block::h, Block::i }, { Block::i, Block::d }, { Block::d, Block::table },
-					{ Block::l, Block::b }, { Block::b, Block::c }, { Block::c, Block::p }, { Block::p, Block::k }, { Block::k, Block::g },
-					{ Block::g, Block::f }, { Block::f, Block::table } };
-	goal3.clear = { { Block::q, true }, { Block::o, true }, { Block::l, true} };
+				  { Block::l, Block::b }, { Block::b, Block::c }, { Block::c, Block::p }, { Block::p, Block::k }, { Block::k, Block::g }, { Block::g, Block::f }, { Block::f, Block::table } };
+	goal3.clear = { { Block::q, true },
+					{ Block::o, true },
+					{ Block::l, true} };
 
 	print_goal(goal3);
 	std::cout << std::endl;
 
 	plan(state3, { { TaskId("move_blocks"), Parameters(goal3) } }, operators, methods, 1);
+
+	std::cout << std::endl << "That's all folks!" << std::endl;
 
 	return 0;
 }
