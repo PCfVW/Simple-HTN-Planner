@@ -20,4 +20,4 @@ Currently:
 
 5. The Blocksworld branch is now closer to PyHop's Python code and also runs the travel example correctly; all travel examples and all blocks world examples run correctly.
 
-6. Get the blocks world branch to get a stable version which runs all examples (both travel and blocks world).
+6. Get the Blocksworld branch to get a stable version which runs all examples (both travel and blocks world).
