@@ -2,6 +2,10 @@
 
 
 
+<<<<<<< .merge_file_a01332
+=======
+I did my best to (i) keep PyHop identifiers in the C++ code, and (ii) print exactly what and when PyHop does print something, so you should be able to follow the C++ code from the Python code.
+>>>>>>> .merge_file_a18732
 
 <!DOCTYPE html>
 <html lang="en">
@@ -15,6 +19,7 @@
   <link rel="dns-prefetch" href="https://github-cloud.s3.amazonaws.com">
   <link rel="dns-prefetch" href="https://user-images.githubusercontent.com/">
 
+<<<<<<< .merge_file_a01332
 
 
   <link crossorigin="anonymous" media="all" integrity="sha512-xnQIMZDOHZTyEPkXHdiwqBPPUAyzDzAU5iDJa6OfzDqwhJdI+0IyBajpzgDAKoegEWUXs4Ze9+/jGhP/OMD98w==" rel="stylesheet" href="https://github.githubassets.com/assets/frameworks-c674083190ce1d94f210f9171dd8b0a8.css" />
@@ -1312,3 +1317,12 @@
   </body>
 </html>
 
+=======
+2. Planner, travel and some of the blocks world examples are in one file (main.cpp); further commits will split planner and examples (planning domains), and I'll try to keep the C++ code as simple as possible.
+
+3. I've branched this project to produce a version able to run PyHop's blocks-world examples; its name is "Blocksworld" and is currently under development.
+
+4. Get the master branch to get a stable version which (only) runs the travel example.
+
+5. The Blocksworld branch is now closer to PyHop's Python code and also runs the travel example correctly; only the first should-fail & should-succeed blocks world examples run correctly. 
+>>>>>>> .merge_file_a18732
