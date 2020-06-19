@@ -274,19 +274,17 @@ bTasks travel_by_taxi(State state, Parameters p)
 		return { ReturnedValue::False, {} };
 }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Blocksworld Tasks 
 
 //	A helper function used in the methods' preconditions.
 BlockStatus status(Block b1, State state, Goal goal, Block done_state)
 {
-	std::map<Block, Block>::iterator it_b1 = goal.pos.find(b1);
 	if (is_done(b1, state, goal, done_state))
 		return BlockStatus::done;
 	else if (state.clear[b1] == false)
 		return BlockStatus::inaccessible;
-	else if ((goal.pos.end() == it_b1) || (goal.pos[b1] == done_state))
+	else if ((goal.pos.end() == goal.pos.find(b1)) || (goal.pos[b1] == done_state))
 		return BlockStatus::move_to_table;
 	else if (is_done(goal.pos[b1], state, goal, done_state) && state.clear[goal.pos[b1]])
 		return BlockStatus::move_to_block;
@@ -441,14 +439,9 @@ bTasks search_operators(State& state, Tasks tasks, Operators& operators, Methods
 	}
 	if (ReturnedValue::True == newstate.first)
 	{
-		bTasks newplan;
-		if (plan.second.size() == 0)
-			newplan = { ReturnedValue::True, {} };
-		else 
-			newplan = plan;
 		tasks.pop_back();
-		newplan.second.push_back(task);
-		bTasks solution = seek_plan(newstate.second, tasks, operators, methods, newplan, depth + 1, verbose);
+		plan.second.push_back(task);
+		bTasks solution = seek_plan(newstate.second, tasks, operators, methods, plan, depth + 1, verbose);
 		if (ReturnedValue::False != solution.first)
 			return solution;
 	}
@@ -528,12 +521,11 @@ bTasks seek_plan(State& state, Tasks tasks, Operators& operators, Methods& metho
 		return bTasks(ReturnedValue::True, plan.second);
 	}
 	Task task = tasks.back();
-	const Operators::iterator it_op = operators.find(task.first);
-	if (it_op != operators.end())
+
+	if (operators.end() != operators.find(task.first))
 		return search_operators(state, tasks, operators, methods, plan, task, depth, verbose);
 
-	const Methods::iterator it_me = methods.find(task.first);
-	if (it_me != methods.end())
+	if (methods.end() != methods.find(task.first))
 		return search_methods(state, tasks, operators, methods, plan, task, depth, verbose);
 
 	if (verbose > 2)
@@ -551,7 +543,7 @@ bTasks plan(State& state, Tasks tasks, Operators& operators, Methods& methods, u
 		std::cout << "** hop++, verbose = " << verbose << ": **" << std::endl;
 		std::cout << "   state = " << state.get_name() << std::endl;
 	}
-	bTasks result = seek_plan(state, tasks, operators, methods, {}, 0, verbose);
+	bTasks result = seek_plan(state, tasks, operators, methods, { ReturnedValue::True, {} }, 0, verbose);
 	if (verbose > 0)
 	{
 		if (ReturnedValue::True == result.first)
@@ -580,7 +572,7 @@ int main()
 {
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//
-	//   TESTS
+	//   FIRST TESTS
 	//
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	print_state({ ReturnedValue::False, empty });
