@@ -5,9 +5,9 @@ PyHop is a simple Hierarchical Task Network (HTN) planner written in Python by [
 
 [Dana Nau's slides on HTN Planning -- PyHop and the "Travel" example are detailed](https://www.cs.umd.edu/users/nau/apa/slides/htn-planning.pdf)
 
-The file "MyHop.py" contains the python code to run the PyHop "Travel" example; the file "BlocksWorldPyHop.py" contains the python code to run both the "Travel" and the "Blocksworld" examples from PyHop.
+The file "MyPyHop.py" contains the python code to run the PyHop "Travel" example; the file "BlocksWorldPyHop.py" contains the python code to run both the "Travel" and the "Blocksworld" examples from PyHop.
 
-Both "MyHop.py" and "BlocksWorldPyHop.py" have been tested with VS 2019 Python; I've uploaded both files so that you can compare the C++ code to the Python code.
+Both "MyPyHop.py" and "BlocksWorldPyHop.py" have been tested with VS 2019 Python; I've uploaded both files so that you can compare the C++ code to the Python code.
 
 I did my best to (i) use PyHop identifiers in the C++ code, and (ii) print exactly what and when PyHop does print something, so you should be able to follow the C++ code from the Python code.
 
@@ -17,7 +17,7 @@ Currently:
 
 2. C++ code of the BlocksWorld branch runs both the "Travel" and the "Blocksworld" examples from PyHop.
 
-3. Both planner and example are in one file (main.cpp).
+3. In each branch, C++ code of both planner and examples are in one file (main.cpp).
 
 4. Get the master branch to get a stable version which (only) runs the "Travel" example.
 
