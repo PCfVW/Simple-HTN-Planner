@@ -17,7 +17,7 @@ Currently:
 
 2. C++ code of the BlocksWorld branch runs both the "Travel" and the "Blocksworld" examples from PyHop.
 
-3. In each branch, C++ code of both planner and examples are in one file (main.cpp).
+3. In each branch, C++ code of both planner and examples is in one file (main.cpp).
 
 4. Get the master branch to get a stable version which (only) runs the "Travel" example.
 
