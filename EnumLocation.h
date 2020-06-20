@@ -1,4 +1,4 @@
-#pragma once
+// File name: "EnumLocation.h"
 #if ( !defined(ENUM_LOCATION_H) || defined(GENERATE_ENUM_STRINGS) )
 
 #if (!defined(GENERATE_ENUM_STRINGS))

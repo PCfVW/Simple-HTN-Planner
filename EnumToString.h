@@ -3,7 +3,6 @@
 //    - Added class line 13
 //    - Added const line 15, 18 and 19.
 //    - Removed enum line 15
-#pragma once
 #undef DECL_ENUM_ELEMENT
 #undef BEGIN_ENUM
 #undef END_ENUM

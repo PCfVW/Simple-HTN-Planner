@@ -1,4 +1,4 @@
-#pragma once // File name: "EnumBlock.h"
+// File name: "EnumBlock.h"
 #if ( !defined(ENUM_BLOCK_H) || defined(GENERATE_ENUM_STRINGS) )
 
 #if (!defined(GENERATE_ENUM_STRINGS))
