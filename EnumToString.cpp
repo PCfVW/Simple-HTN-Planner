@@ -7,5 +7,5 @@
 #include "EnumBlock.h"				// Application Domain: Blocksworld
 #include "EnumBlockStatus.h"		// Application Domain: Blocksworld
 #include "EnumLocation.h"			// Application Domain: Travel
-#include "EnumReturnedValue.h"		// Application Domain: Travel
+#include "EnumReturnedValue.h"		// HTN Planner routines, and both operators and methods of any application domain.
 #undef GENERATE_ENUM_STRINGS	// Stop string generation
