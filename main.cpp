@@ -331,13 +331,12 @@ bTasks move1(State state, Parameters p)
 bTasks get_m(State state, Parameters p)
 {
 	if (state.clear[p.b] == true)
+	{
 		if (state.pos[p.b] == Block::table)
 			return { ReturnedValue::True, { Task(OperatorId("pickup"), Parameters(p.b, p.goal)) } };
 		else
-		{
-			p.c = state.pos[p.b];
 			return { ReturnedValue::True, { Task(OperatorId("unstack"), Parameters(p.b, state.pos[p.b], p.goal)) } };
-		}
+	}
 	else
 		return { ReturnedValue::False, {} };
 }
@@ -592,41 +591,42 @@ int main()
 	//   TRAVEL
 	//
 	///////////////////////////////////////////////////////////////////////////////////////////////
-	// Declare Tavel operators
+	// Declare Travel operators
 	declare_operators(OperatorId("walk"), walk);
 	declare_operators(OperatorId("call_taxi"), call_taxi);
 	declare_operators(OperatorId("ride_taxi"), ride_taxi);
 	declare_operators(OperatorId("pay_driver"), pay_driver);
 
 	print_operators(operators);
+	std::cout << std::endl;
 
 	bState ort2 = (operators[OperatorId("call_taxi")])(state1, Parameters(Agent::me, Location::home));
-
-	std::cout << std::endl;
 
 	// Declare Travel Methods
 	declare_methods(TaskId("travel"), travel_by_foot, travel_by_taxi);
 
 	print_methods(methods);
+	std::cout << std::endl;
 
-	Task Initial = { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) };
-
-	std::cout << "*************************************************************************************" << std::endl
+	std::cout << std::endl 
+			  << "*************************************************************************************" << std::endl
 			  << "Call plan(state1, [('travel', 'me', 'home', 'park')]) with different verbosity levels" << std::endl
 			  << "*************************************************************************************" << std::endl
 			  << std::endl;
 
 	std::cout << "- If verbose=0 (the default), hop++ returns the solution but prints nothing." << std::endl;
-	plan(state1, { Initial }, operators, methods);
+	plan(state1, { { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) } }, operators, methods);
 
 	std::cout << "- If verbose=1, hop++ prints the problem and solution, and returns the solution:" << std::endl;
-	plan(state1, { Initial }, operators, methods, 1);
+	plan(state1, { { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) } }, operators, methods, 1);
 
 	std::cout << "- If verbose=2, hop++ also prints a note at each recursive call:" << std::endl;
-	plan(state1, { Initial }, operators, methods, 2);
+	plan(state1, { { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) } }, operators, methods, 2);
 
 	std::cout << "- If verbose=3, hop++ also prints the intermediate states:" << std::endl;
-	plan(state1, { Initial }, operators, methods, 3);
+	plan(state1, { { TaskId("travel"), Parameters(Agent::me, Location::home, Location::park) } }, operators, methods, 3);
+
+	std::cout << std::endl;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//
@@ -647,13 +647,13 @@ int main()
 	declare_methods(MethodId("get"), get_m);
 	declare_methods(MethodId("put"), put_m);
 
-	std::cout << std::endl;
 	print_operators(operators);
 	std::cout << std::endl;
 
 	// #############     beginning of blocksworld tests     ################
 
-	std::cout << "************************************************************" << std::endl
+	std::cout << std::endl 
+			  << "************************************************************" << std::endl
 			  << "First, test pyhop on some of the operators and smaller tasks" << std::endl
 			  << "************************************************************" << std::endl
 			  << std::endl;
@@ -774,7 +774,8 @@ int main()
 			  << "*********************************************************************" << std::endl
 		      << std::endl;
 
-	std::cout << "- Define state3:" << std::endl;
+	std::cout << "- Define state3:"
+			  << std::endl;
 
 	State state3("state3");
 	state3.pos = { { Block::a, Block::l }, { Block::l, Block::m }, { Block::m, Block::table },
@@ -806,6 +807,6 @@ int main()
 	plan(state3, { { TaskId("move_blocks"), Parameters(goal3) } }, operators, methods, 1);
 
 	std::cout << std::endl << "That's all folks!" << std::endl;
-
+	
 	return 0;
 }
