@@ -5,6 +5,7 @@
 #include <iostream>			// Visibility for stc::cout, std::endl
 #include <map>				// Visibility for std::map
 #include <string>			// Visibility for std::string
+#include <type_traits>		// Visibility for std::is_same
 #include <vector>			// Visibility for std::vector
 
 #include "EnumAgent.h"			// Application Domain: Travel
@@ -360,10 +361,12 @@ typedef std::map<TaskId, std::vector<Ptr2Method>> Methods;
 Methods methods;
 template<typename T> void declare_methods(TaskId a_TaskId, T a_method)
 {
+	static_assert(std::is_same<Ptr2Method, T>(), "declare_methods/2::2nd parameter is not a pointer to a method.");
 	methods[a_TaskId].push_back(a_method);
 }
 template<typename T, typename... Args> void declare_methods(TaskId a_TaskId, T a_method, Args... more_methods)
 {
+	static_assert(std::is_same<Ptr2Method, T>(), "declare_methods/n::2nd parameter is not a pointer to a method.");
 	methods[a_TaskId].push_back(a_method);
 	return declare_methods(a_TaskId, more_methods...);
 }
