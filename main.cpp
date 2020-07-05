@@ -780,7 +780,7 @@ int main()
 	std::cout << "- Define state3:"
 			  << std::endl;
 
-	State state3("state3");
+	State state3("state3");	// I've replaced the integers by letters (used in the previous example)
 	state3.pos = { { Block::a, Block::l }, { Block::l, Block::m }, { Block::m, Block::table },
 				   { Block::k, Block::j }, { Block::j, Block::e }, { Block::e, Block::d }, { Block::d, Block::n }, { Block::n, Block::o }, { Block::o, Block::table },
 				   { Block::i, Block::h }, { Block::h, Block::g }, { Block::g, Block::f }, { Block::f, Block::table },
