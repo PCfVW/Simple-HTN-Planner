@@ -26,3 +26,5 @@ Currently:
 5. Get the BlocksWorld branch to get a stable version which runs all examples (both "Travel" and "Blocksworld"); this branch is closer to PyHop's Python code than the master branch.
 
 6. I intend to merge the 2 branches and create a new branch where I'll split the C++ code as is done for the PyHop Python code.
+
+7. (2020/09/14) I have merged the 2 branches; master branch now contains everything you need.
