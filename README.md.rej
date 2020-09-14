@@ -1,6 +1,0 @@
-diff a/README.md b/README.md	(rejected hunks)
-@@ -2,3 +3,4 @@
-+<<<<<<< HEAD
- # Simple-HTN-Planner
- PyHop is a simple Hierarchical Task Network (HTN) planner written in Python by [Dana Nau](https://www.cs.umd.edu/users/nau/):
- 
