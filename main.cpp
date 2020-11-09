@@ -1,4 +1,13 @@
-// Main for both travel and blocksworld examples
+// ================================================================================================ Beginning of file "main.cpp"
+// Copyright (c) 2020, Eric Jacopin, ejacopin@ymail.com
+// ------------------------------------------------------------------------------------------------
+// Main for travel example, blocksworld example and IPC 2011 blocksworld problems
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//                           S T D      &      S T L      F I L E S
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
 //
 #include <algorithm>		// Visibility for std::find_if
 #include <iomanip>			// Visibility for std::setw, std::left, std::right
@@ -7,13 +16,21 @@
 #include <string>			// Visibility for std::string
 #include <type_traits>		// Visibility for std::is_same
 #include <vector>			// Visibility for std::vector
-
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
+//                           P R O J E C T      F I L E S
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
 #include "EnumAgent.h"			// Application Domain: Travel
 #include "EnumBlock.h"			// Application Domain: Blocksworld
 #include "EnumBlockStatus.h"	// Application Domain: Blocksworld
 #include "EnumLocation.h"		// Application Domain: Travel
 #include "EnumReturnedValue.h"	// Visibility for None, False, and True
-
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+//
 typedef std::string MethodId;
 typedef std::string OperatorId;
 typedef std::string TaskId;
@@ -315,7 +332,7 @@ bTasks moveb_m(State state, Parameters p)
 
 	//
 	//	if we get here, no blocks can be moved to their final locations
-	std::map<Block, bool>::iterator it_b1 = std::find_if(state.clear.begin(), state.clear.end(), [&state, &p](std::pair<Block, bool> c){ return (BlockStatus::waiting == status(c.first, state, p.goal, Block::table)); });
+	std::map<Block, bool>::iterator it_b1 = std::find_if(state.clear.begin(), state.clear.end(), [&state, &p](std::pair<Block, bool> c) { return ((BlockStatus::waiting == status(c.first, state, p.goal, Block::table)) && (Block::table != state.pos[c.first])); });
 	if (it_b1 != state.clear.end())
 		return { ReturnedValue::True, { Task(MethodId("move_one"), Parameters(it_b1->first, Block::table)), Task(MethodId("move_blocks"), Parameters(p.goal)) } };
 

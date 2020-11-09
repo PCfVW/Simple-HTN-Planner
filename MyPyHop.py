@@ -2,7 +2,10 @@ from __future__ import print_function
 import copy
 import sys
 
-############################################################
+###############################################################################
+###
+###  helpers.py
+###
 
 def forall(seq,cond):
     """True if cond(x) holds for all x in seq, otherwise False."""
@@ -21,8 +24,7 @@ def find_if(cond,seq):
 
 def is_done(b1,state,goal, done_state):
     if b1 == done_state: return True
-    if b1 in goal.pos and goal.pos[b1] != state.pos[b1]:
-        return False
+    if b1 in goal.pos and goal.pos[b1] != state.pos[b1]: return False
     if state.pos[b1] == done_state: return True
     return is_done(state.pos[b1],state,goal,done_state)
 
@@ -51,6 +53,11 @@ def print_methods(mlist):
     for task in mlist:
         print('{:<14}'.format(task) + ', '.join(
             [f.__name__ for f in mlist[task]]))
+
+###############################################################################
+###
+###  hop.py
+###
 
 ############################################################
 # States and goals
@@ -127,10 +134,7 @@ def search_methods(state,tasks,operators,methods,plan,task,depth,verbose):
     if verbose>2:
         print('depth {} method instance {}'.format(depth,task))
     relevant = methods[task[0]]
-    print('relevant: {}'.format(relevant))
     for method in relevant:
-        print('method: {}'.format(method))
-        print('*task[1:]: {},{},{}.'.format(*task[1:]))
         subtasks = method(state,*task[1:])
         # Can't just say "if subtasks:", because that's wrong if
         # subtasks == []
@@ -144,7 +148,7 @@ def search_methods(state,tasks,operators,methods,plan,task,depth,verbose):
 
 def seek_plan(state,tasks,operators,methods,plan,depth,verbose=0):
     """
-    Workhorse for pyhop. state, tasks, operators, and methods are as in the
+    Workhorse for py state, tasks, operators, and methods are as in the
     plam function.
     - plan is the current partial plan.
     - depth is the recursion depth, for use in debugging
@@ -167,89 +171,408 @@ def seek_plan(state,tasks,operators,methods,plan,depth,verbose=0):
         print('depth {} returns failure'.format(depth))
     return False
 
-############################################################
+###############################################################################
+###
+###  operators.py
+###
 
-def taxi_rate(dist):
-    return (1.5 + 0.5 * dist)
+"""Each Pyhop planning operator is a Python function. The 1st argument is
+the current state, and the others are the planning operator's usual arguments.
+This is analogous to how methods are defined for Python classes (where
+the first argument is always the name of the class instance). For example,
+the function pickup(state,b) implements the planning operator for the task
+('pickup', b).
 
-def walk(state,a,x,y):
-    if state.loc[a] == x:
-        state.loc[a] = y
+The blocks-world operators use three state variables:
+- pos[b] = block b's position, which may be 'table', 'hand', or another block.
+- clear[b] = False if a block is on b or the hand is holding b, else True.
+- holding = name of the block being held, or False if the hand is empty.
+"""
+
+def pickup(state,b):
+    if (state.pos[b] == 'table'
+        and state.clear[b] == True
+        and state.holding == False):
+        state.pos[b] = 'hand'
+        state.clear[b] = False
+        state.holding = b
         return state
     else: return False
 
-def call_taxi(state,a,x):
-    state.loc['taxi'] = x
-    return state
-
-def ride_taxi(state,a,x,y):
-    if state.loc['taxi']==x and state.loc[a]==x:
-        state.loc['taxi'] = y
-        state.loc[a] = y
-        state.owe[a] = taxi_rate(state.dist[x][y])
+def unstack(state,b,c):
+    if (state.pos[b] == c
+        and c != 'table'
+        and state.clear[b] == True
+        and state.holding == False):
+        state.pos[b] = 'hand'
+        state.clear[b] = False
+        state.holding = b
+        state.clear[c] = True
         return state
     else: return False
 
-def pay_driver(state,a):
-    if state.cash[a] >= state.owe[a]:
-        state.cash[a] = state.cash[a] - state.owe[a]
-        state.owe[a] = 0
+def putdown(state,b):
+    if state.pos[b] == 'hand':
+        state.pos[b] = 'table'
+        state.clear[b] = True
+        state.holding = False
         return state
     else: return False
 
-declare_operators(walk, call_taxi, ride_taxi, pay_driver)
+def stack(state,b,c):
+    if state.pos[b] == 'hand' and state.clear[c] == True:
+        state.pos[b] = c
+        state.clear[b] = True
+        state.holding = False
+        state.clear[c] = False
+        return state
+    else: return False
+
+"""
+Below, 'declare_operators(pickup, unstack, putdown, stack)' tells Pyhop
+what the operators are. Note that the operator names are *not* quoted.
+"""
+
+declare_operators(pickup, unstack, putdown, stack)
+
+###############################################################################
+###
+###  method1.py
+###
+
+"""
+Blocks World methods for Pyhop 1.1.
+Author: Dana Nau <nau@cs.umd.edu>, November 15, 2012
+This file should work correctly in both Python 2.7 and Python 3.2.
+"""
+
+def status(b1,state,goal,done_state):
+    """
+    A helper function used in the methods' preconditions.
+    """
+    if is_done(b1,state,goal,done_state):
+        return 'done'
+    elif not state.clear[b1]:
+        return 'inaccessible'
+    elif not (b1 in goal.pos) or goal.pos[b1] == done_state:
+        return 'move-to-table'
+    elif (is_done(goal.pos[b1],state,goal,done_state) and
+          state.clear[goal.pos[b1]]):
+        return 'move-to-block'
+    else:
+        return 'waiting'
+
+
+"""
+In each Pyhop planning method, the first argument is the current state (this
+is analogous to Python methods, in which the first argument is the class
+instance). The rest of the arguments must match the arguments of the task
+that the method is for. For example, ('pickup', b1) has a method
+get_m(state,b1), as shown below.
+"""
+
+### methods for "move_blocks"
+
+def moveb_m(state,goal):
+    """
+    This method implements the following block-stacking algorithm:
+    If there's a block that can be moved to its final position, then
+    do so and call move_blocks recursively. Otherwise, if there's a
+    block that needs to be moved and can be moved to the table, then
+    do so and call move_blocks recursively. Otherwise, no blocks need
+    to be moved.
+    """
+    for b1 in all(state):
+        s = status(b1,state,goal,'table')
+        if s == 'move-to-table':
+            return [('move_one',b1,'table'),('move_blocks',goal)]
+        elif s == 'move-to-block':
+            return [('move_one',b1,goal.pos[b1]), ('move_blocks',goal)]
+        else:
+            continue
+    #
+    # if we get here, no blocks can be moved to their final locations
+    b1 = find_if(
+        lambda x: status(x,state,goal,'table') == 'waiting' and not state.pos[x] == 'table',
+        all(state))
+    if b1 != None:
+        return [('move_one',b1,'table'), ('move_blocks',goal)]
+    #
+    # if we get here, there are no blocks that need moving
+    return []
+
+"""
+declare_methods must be called once for each taskname. Below,
+'declare_methods('get',get_m)' tells Pyhop that 'get' has one method, get_m.
+Notice that 'get' is a quoted string, and get_m is the actual function.
+"""
+declare_methods('move_blocks',moveb_m)
+
+
+### methods for "move_one"
+def move1(state,b1,dest):
+    """
+    Generate subtasks to get b1 and put it at dest.
+    """
+    return [('get', b1), ('put', b1,dest)]
+declare_methods('move_one',move1)
+
+
+### methods for "get"
+def get_m(state,b1):
+    """
+    Generate either a pickup or an unstack subtask for b1.
+    """
+    if state.clear[b1]:
+        if state.pos[b1] == 'table':
+                return [('pickup',b1)]
+        else:
+                return [('unstack',b1,state.pos[b1])]
+    else:
+        return False
+declare_methods('get',get_m)
+
+
+### methods for "put"
+def put_m(state,b1,b2):
+    """
+    Generate either a putdown or a stack subtask for b1.
+    b2 is b1's destination: either the table or another block.
+    """
+    if state.holding == b1:
+        if b2 == 'table':
+                return [('putdown',b1)]
+        else:
+                return [('stack',b1,b2)]
+    else:
+        return False
+declare_methods('put',put_m)
+
+###############################################################################
+###
+###  run1.py
+###
+"""
+Blocks-world test data for Pyhop 1.1.
+Author: Dana Nau <nau@cs.umd.edu>, November 15, 2012
+This file should work correctly in both Python 2.7 and Python 3.2.
+"""
+
 print('')
 print_operators(get_operators())
-
-def travel_by_foot(state,a,x,y):
-    if state.dist[x][y] <= 2:
-        return [('walk',a,x,y)]
-    return False
-
-def travel_by_taxi(state,a,x,y):
-    if state.cash[a] >= taxi_rate(state.dist[x][y]):
-        return [('call_taxi',a,x), ('ride_taxi',a,x,y), ('pay_driver',a)]
-    return False
-
-declare_methods('travel',travel_by_foot,travel_by_taxi)
 print('')
 print_methods(get_methods())
 
-state1 = State('state1')
-state1.loc = {'me':'home'}
-state1.cash = {'me':20}
-state1.owe = {'me':0}
-state1.dist = {'home':{'park':8}, 'park':{'home':8}}
+#############     beginning of tests     ################
 
 print("""
-********************************************************************************
-Call hop.plan(state1,[('travel','me','home','park')]) with different verbosity levels
-********************************************************************************
+****************************************
+First, test pyhop on some of the operators and smaller tasks
+****************************************
 """)
 
-print("- If verbose=0 (the default), Pyhop returns the solution but prints nothing.\n")
-plan(state1,
-         [('travel','me','home','park')],
-         get_operators(),
-         get_methods())
+print("- Define state1: a on b, b on tale, c on table")
 
-print('- If verbose=1, Pyhop prints the problem and solution, and returns the solution:')
-plan(state1,
-         [('travel','me','home','park')],
-         get_operators(),
-         get_methods(),
-         verbose=1)
+"""
+A state is a collection of all of the state variables and their values. Every
+state variable in the domain should have a value.
+"""
 
-print('- If verbose=2, Pyhop also prints a note at each recursive call:')
-plan(state1,
-         [('travel','me','home','park')],
-         get_operators(),
-         get_methods(),
-         verbose=2)
+state1 = State('state1')
+state1.pos={'a':'b', 'b':'table', 'c':'table'}
+state1.clear={'c':True, 'b':False,'a':True}
+state1.holding=False
 
-print('- If verbose=3, Pyhop also prints the intermediate states:')
-plan(state1,
-         [('travel','me','home','park')],
-         get_operators(),
-         get_methods(),
-         verbose=3)
+print_state(state1)
+print('')
+
+print('- these should fail:')
+plan(state1,[('pickup','a')], get_operators(), get_methods(), verbose=3)
+plan(state1,[('pickup','b')], get_operators(), get_methods(), verbose=3)
+print('- these should succeed:')
+plan(state1,[('pickup','c')], get_operators(), get_methods(), verbose=3)
+plan(state1,[('unstack','a','b')], get_operators(), get_methods(), verbose=1)
+plan(state1,[('get','a')], get_operators(), get_methods(), verbose=1)
+print('- this should fail:')
+plan(state1,[('get','b')], get_operators(), get_methods(), verbose=1)
+print('- this should succeed:')
+plan(state1,[('get','c')], get_operators(), get_methods(), verbose=1)
+
+print("""
+****************************************
+Run pyhop on two block-stacking problems, both of which start in state1.
+The goal for the 2nd problem omits some of the conditions in the goal
+of the 1st problem, but those conditions will need to be achieved
+anyway, so both goals should produce the same plan.
+****************************************
+""")
+
+print("- Define goal1a:")
+
+"""
+A goal is a collection of some (but not necessarily all) of the state variables
+and their desired values. Below, both goal1a and goal1b specify c on b, and b
+on a. The difference is that goal1a also specifies that a is on table and the
+hand is empty.
+"""
+
+goal1a = Goal('goal1a')
+goal1a.pos={'c':'b', 'b':'a', 'a':'table'}
+goal1a.clear={'c':True, 'b':False, 'a':False}
+goal1a.holding=False
+
+print_goal(goal1a)
+print('')
+
+print("- Define goal1b:")
+
+goal1b = Goal('goal1b')
+goal1b.pos={'c':'b', 'b':'a'}
+
+print_goal(goal1b)
+
+### goal1b omits some of the conditions of goal1a,
+### but those conditions will need to be achieved anyway
+
+plan(state1,[('move_blocks', goal1a)], get_operators(), get_methods(), verbose=1)
+plan(state1,[('move_blocks', goal1b)], get_operators(), get_methods(), verbose=1)
+
+print("""
+****************************************
+Run pyhop on two more planning problems. As before, the 2nd goal omits
+some of the conditions in the 1st goal, but both goals should produce
+the same plan.
+****************************************
+""")
+
+print("- Define state 2:")
+
+state2 = State('state2')
+state2.pos={'a':'c', 'b':'d', 'c':'table', 'd':'table'}
+state2.clear={'a':True, 'c':False,'b':True, 'd':False}
+state2.holding=False
+
+print_state(state2)
+print('')
+
+print("- Define goal2a:")
+
+goal2a = Goal('goal2a')
+goal2a.pos={'b':'c', 'a':'d', 'c':'table', 'd':'table'}
+goal2a.clear={'a':True, 'c':False,'b':True, 'd':False}
+goal2a.holding=False
+
+print_goal(goal2a)
+print('')
+
+print("- Define goal2b:")
+
+goal2b = Goal('goal2b')
+goal2b.pos={'b':'c', 'a':'d'}
+
+print_goal(goal2b)
+print('')
+
+
+### goal2b omits some of the conditions of goal2a,
+### but those conditions will need to be achieved anyway.
+
+plan(state2,[('move_blocks', goal2a)], get_operators(), get_methods(), verbose=1)
+plan(state2,[('move_blocks', goal2b)], get_operators(), get_methods(), verbose=1)
+
+
+print("""
+****************************************
+Test pyhop on planning problem bw_large_d from the SHOP distribution.
+****************************************
+""")
+
+print("- Define state3:")
+
+state3 = State('state3')
+state3.pos = {1:12, 12:13, 13:'table',
+              11:10, 10:5, 5:4, 4:14, 14:15, 15:'table',
+              9:8, 8:7, 7:6, 6:'table',
+              19:18, 18:17, 17:16, 16:3, 3:2, 2:'table'}
+state3.clear = {x:False for x in range(1,20)}
+state3.clear.update({1:True, 11:True, 9:True, 19:True})
+state3.holding = False
+
+print_state(state3)
+print('')
+
+print("- Define goal3:")
+
+goal3 = Goal('goal3')
+goal3.pos = {15:13, 13:8, 8:9, 9:4, 4:'table', 12:2, 2:3, 3:16, 16:11, 11:7,
+             7:6, 6:'table'}
+goal3.clear = {17:True, 15:True, 12:True}
+
+print_goal(goal3)
+print('')
+
+plan(state3,[('move_blocks', goal3)], get_operators(), get_methods(), verbose=1)
+
+print("""
+****************************************
+Test pyhop on Sussman Anomaly.
+****************************************
+""")
+
+SA1 = State('Initial State Sussman Anomaly')
+SA1.pos = {'a':'table', 'b':'table', 'c':'a'}
+SA1.clear = {'c':True, 'b':True, 'a':False}
+SA1.holding = False
+
+print_state(SA1)
+print('')
+
+SA2 = Goal('Goal State of the Sussman Anomaly')
+SA2.pos = {'a':'b', 'b':'c'}
+SA2.clear = {}
+SA2.holding = False
+
+print_goal(SA2)
+print('')
+
+plan(SA1,[('move_blocks', SA2)], get_operators(), get_methods(), verbose=3)
+
+print("""
+****************************************
+Test pyhop on planning problem BW-rand-50 from the IPC 2011 distribution.
+****************************************
+""")
+
+print("- Define initial state for problem IPC2011BWrand50:")
+
+IPC2011BWrand50 = State('problem BW-rand-50')
+IPC2011BWrand50.pos = {
+              1:48, 2:33, 3:41, 4:37, 5:45, 6:16, 7:31, 8:28, 9:49,
+              10:34, 11:15, 12:17, 13:20, 14:2, 15:44, 16:5, 17:32, 18:50, 19:30,
+              20:22, 21:27, 22:38, 23:11, 24:'table', 25:46, 26:'table', 27:40, 28:43, 29:19,
+              30:39, 31:29, 32:'table', 33:'table', 34:14, 35:36, 36:'table', 37:8, 38:9, 39:18,
+              40:3, 41:35, 42:4, 43:24, 44:26, 45:47, 46:42, 47:1, 48:21, 49:25,
+              50:6
+              }
+IPC2011BWrand50.clear = {x:False for x in range(1,50)}
+IPC2011BWrand50.clear.update({7:True, 10:True, 12:True, 13:True, 23:True})
+IPC2011BWrand50.holding = False
+
+print_state(IPC2011BWrand50)
+print('')
+
+print("- Define goal for problem IPC2011BWrand50:")
+
+IPC2011BWrand50Goal = Goal('problem BW-rand-50')
+IPC2011BWrand50Goal.pos = {1:33, 3:40, 4:46, 5:21, 6:17, 7:37, 8:15, 9:41,   
+                            10:26, 11:23, 12:25, 13:47, 14:20, 15:19, 16:31, 17:39, 18:50, 19:1,
+                            20:45, 21:11, 23:43, 25:42, 26:36, 27:35, 28:29, 29:44,
+                            30:8, 31:9, 32:6, 33:10, 34:14, 35:2, 36:7, 37:32, 38:28,
+                            40:24, 41:38, 42:34, 43:12, 44:49, 45:4, 46:18, 47:30, 48:22,
+                            50:13}
+IPC2011BWrand50Goal.clear = {}
+
+print_goal(IPC2011BWrand50Goal)
+print('')
+
+plan(IPC2011BWrand50,[('move_blocks', IPC2011BWrand50Goal)], get_operators(), get_methods(), verbose=3)
