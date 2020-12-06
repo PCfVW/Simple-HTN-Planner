@@ -1,6 +1,6 @@
 // File name: "EnumToString.cpp"
 
-/// The strings associated with the enums are gererated here
+// The strings associated with the enums are generated here
 /////////////////////////////////////////////////////////////////////
 #define GENERATE_ENUM_STRINGS	// Start string generation
 #include "EnumAgent.h"				// Application Domain: Travel 

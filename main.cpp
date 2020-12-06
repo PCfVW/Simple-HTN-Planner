@@ -756,7 +756,7 @@ int main()
 
 	State state2("state2");
 	state2.pos = { { Block::a, Block::c }, { Block::b, Block::d }, { Block::c, Block::table }, { Block::d, Block::table} };
-	state2.clear = { {Block::a, true }, {Block::c, false }, { Block::b, true }, {Block::d, false} };
+	state2.clear = { { Block::a, true }, { Block::c, false }, { Block::b, true }, { Block::d, false} };
 	state2.holding = Block::none;
 
 	print_state({ ReturnedValue::True, state2 });
