@@ -1,4 +1,4 @@
-// File name: "EnumToString.cpp"
+// ================================================================================================ File name: "EnumToString.cpp"
 
 // The strings associated with the enums are generated here
 /////////////////////////////////////////////////////////////////////

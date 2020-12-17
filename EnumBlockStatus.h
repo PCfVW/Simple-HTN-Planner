@@ -1,4 +1,4 @@
-// File name: "EnumBlockStatus.h"
+// ================================================================================================ File name: "EnumBlockStatus.h"
 #if ( !defined(ENUM_BLOCK_STATUS_H) || defined(GENERATE_ENUM_STRINGS) )
 
 #if (!defined(GENERATE_ENUM_STRINGS))

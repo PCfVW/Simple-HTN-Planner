@@ -1,4 +1,4 @@
-// File name: "EnumAgent.h"
+// ================================================================================================ File name: "EnumAgent.h"
 #if ( !defined(ENUM_AGENT_H) || defined(GENERATE_ENUM_STRINGS) )
 
 #if (!defined(GENERATE_ENUM_STRINGS))
