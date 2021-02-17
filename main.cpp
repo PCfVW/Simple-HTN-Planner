@@ -392,7 +392,7 @@ template<typename T, typename... Args> void declare_methods(TaskId a_TaskId, T a
 void print_methods(Methods mlist)
 {
 	std::cout << std::setw(14) << std::left << "TASK:" << std::right << "METHODS:" << std::endl;
-	for (auto task : mlist)
+	for (auto &task : mlist)
 	{
 		std::cout << std::setw(14) << std::left << task.first;
 		for (std::vector<Ptr2Method>::iterator m = task.second.begin(); m != task.second.end();)
@@ -410,17 +410,17 @@ void print_state(bState state, unsigned short indent = 4)
 {
 	if (ReturnedValue::True == state.first)
 	{
-		for (auto o : state.second.cash)
+		for (const auto &o : state.second.cash)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::cash::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.dist)
+		for (const auto &o : state.second.dist)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::dist::{" + GetStringLocation(o.first.first) + "," + GetStringLocation(o.first.second) + "} = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.loc)
+		for (const auto &o : state.second.loc)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::loc::" + GetStringAgent(o.first) + " = " + GetStringLocation(o.second) << std::endl;
-		for (auto o : state.second.owe)
+		for (const auto &o : state.second.owe)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::owe::" + GetStringAgent(o.first) + " = " << o.second /* float */ << std::endl;
-		for (auto o : state.second.clear)
+		for (const auto &o : state.second.clear)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::clear::" + GetStringBlock(o.first) + " = " << o.second /* bool */ << std::endl;
-		for (auto o : state.second.pos)
+		for (const auto &o : state.second.pos)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::pos::" + GetStringBlock(o.first) + " = " << GetStringBlock(o.second) << std::endl;
 		if (state.second.clear.size() > 0 && state.second.pos.size() > 0)
 			std::cout << std::setw(indent) << "" << state.second.get_name() + "::holding::" + GetStringBlock(state.second.holding) << std::endl;
@@ -433,9 +433,9 @@ void print_state(bState state, unsigned short indent = 4)
 
 void print_goal(Goal goal, unsigned short indent = 4)
 {
-	for (auto o : goal.clear)
+	for (const auto &o : goal.clear)
 		std::cout << std::setw(indent) << "" << goal.get_name() + "::clear::" + GetStringBlock(o.first) + " = " << o.second /* bool */ << std::endl;
-	for (auto o : goal.pos)
+	for (const auto &o : goal.pos)
 		std::cout << std::setw(indent) << "" << goal.get_name() + "::pos::" + GetStringBlock(o.first) + " = " << GetStringBlock(o.second) << std::endl;
 
 	std::cout << std::setw(indent) << "" << goal.get_name() + "::holding::" + GetStringBlock(goal.holding) << std::endl;
