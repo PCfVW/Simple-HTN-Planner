@@ -1,5 +1,5 @@
 // ================================================================================================ Beginning of file "main.cpp"
-// Copyright (c) 2020, Eric Jacopin, ejacopin@ymail.com
+// Copyright (c) 2020-2021, Eric Jacopin, ejacopin@ymail.com
 // ------------------------------------------------------------------------------------------------
 // Main for travel example, blocksworld example and IPC 2011 blocksworld problems
 //
