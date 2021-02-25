@@ -9,7 +9,7 @@ Dana Nau:
 [Dana Nau's slides on HTN Planning -- PyHop and the "Travel" example are
 detailed](https://www.cs.umd.edu/users/nau/apa/slides/htn-planning.pdf)
 
-Here is a trivial port of PyHop 2.0 in Visual Studio (2019) C++17; g++ 9.3.0
+Here is a trivial port of PyHop 2.0 in Visual Studio (2019) C++14; g++ 9.3.0
 will also compile and run this port (thanks to Johannes Haindl for reporting
 about this).
 
